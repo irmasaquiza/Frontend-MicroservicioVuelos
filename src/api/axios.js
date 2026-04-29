@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const apiBaseUrl = "https://apivuelos-hnc9aybkedc6e9bj.brazilsouth-01.azurewebsites.net/api/v1"
+const apiBaseUrl = import.meta.env.VITE_API_URL || "https://apivuelos-hnc9aybkedc6e9bj.brazilsouth-01.azurewebsites.net/api/v1"
 const apiClient = axios.create({
   baseURL: apiBaseUrl.replace(/\/$/, ''),
   headers: {
