@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getVuelosApi } from '@/api/vuelos.api'
+import { buscarVuelosBookingApi } from '@/api/vuelos.api'
 import { useCatalogosStore } from '@/stores/catalogos.store'
 import { useReservaStore } from '@/stores/reserva.store'
 import { extractItems } from '@/utils/portalCliente'
@@ -190,7 +190,7 @@ async function cargarVuelosPaginados(params = {}) {
   let paginasSinNuevos = 0
 
   for (let page = 1; page <= maxPaginas; page += 1) {
-    const respuesta = await getVuelosApi({
+    const respuesta = await buscarVuelosBookingApi({
       estado_vuelo: 'PROGRAMADO',
       page,
       page_size: pageSize,

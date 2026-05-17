@@ -141,22 +141,22 @@ async function handleRegistro() {
   errorGeneral.value = ''
   try {
     const payload = {
-      tipo_identificacion: form.value.tipo_identificacion,
-      numero_identificacion: form.value.numero_identificacion.trim(),
+      tipoIdentificacion: form.value.tipo_identificacion,
+      numeroIdentificacion: form.value.numero_identificacion.trim(),
       nombres: form.value.nombres.trim(),
       correo: form.value.correo.trim(),
       telefono: form.value.telefono.trim(),
       direccion: form.value.direccion.trim(),
-      id_ciudad_residencia: Number(form.value.id_ciudad_residencia),
-      id_pais_nacionalidad: Number(form.value.id_pais_nacionalidad),
+      idCiudadResidencia: Number(form.value.id_ciudad_residencia),
+      idPaisNacionalidad: Number(form.value.id_pais_nacionalidad),
       username: form.value.username.trim(),
       password: form.value.password,
     }
 
     if (form.value.apellidos.trim()) payload.apellidos = form.value.apellidos.trim()
     if (form.value.genero) payload.genero = form.value.genero
-    if (form.value.fecha_nacimiento) payload.fecha_nacimiento = form.value.fecha_nacimiento
-    if (esRUC.value) payload.razon_social = form.value.razon_social.trim()
+    if (form.value.fecha_nacimiento) payload.fechaNacimiento = form.value.fecha_nacimiento
+    if (esRUC.value) payload.razonSocial = form.value.razon_social.trim()
 
     await registerClienteApi(payload)
     await auth.login({ username: payload.username, password: payload.password }, true)

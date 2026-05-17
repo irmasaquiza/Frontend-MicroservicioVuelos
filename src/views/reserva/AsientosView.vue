@@ -1,9 +1,10 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getAsientosVueloApi } from '@/api/vuelos.api'
+import { getAsientosVueloBookingApi } from '@/api/vuelos.api'
 import CheckoutStepper from '@/components/CheckoutStepper.vue'
 import { useReservaStore } from '@/stores/reserva.store'
+import { deepValue, extractItems } from '@/utils/portalCliente'
 
 const router = useRouter()
 const reserva = useReservaStore()
@@ -37,17 +38,33 @@ function fechaLegible(valor) {
   }).format(new Date(valor))
 }
 
-function normalizarLista(data) {
-  if (Array.isArray(data)) return data
-  if (Array.isArray(data?.items)) return data.items
-  return []
-}
-
 function obtenerCampo(obj, claves, fallback = null) {
   for (const clave of claves) {
     if (obj?.[clave] !== undefined && obj?.[clave] !== null) return obj[clave]
   }
+  return deepValue(obj, claves) ?? fallback
+}
+
+function toBool(valor, fallback = false) {
+  if (typeof valor === 'boolean') return valor
+  if (typeof valor === 'number') return valor === 1
+  if (typeof valor === 'string') {
+    const normalizado = valor.trim().toLowerCase()
+    if (['true', '1', 'si', 'sí', 'activo', 'activa', 'disponible', 'libre'].includes(normalizado)) return true
+    if (['false', '0', 'no', 'bloqueado', 'reservado', 'ocupado', 'inactivo', 'inactiva'].includes(normalizado)) return false
+  }
   return fallback
+}
+
+function normalizarDisponibilidad(asiento) {
+  const disponible = obtenerCampo(asiento, ['disponible', 'available', 'isAvailable', 'activo'])
+  if (disponible !== null) return toBool(disponible)
+
+  const estado = String(obtenerCampo(asiento, ['estado', 'estadoAsiento', 'estado_asiento'], 'ACTIVO'))
+    .trim()
+    .toUpperCase()
+
+  return ['ACTIVO', 'DISPONIBLE', 'LIBRE'].includes(estado)
 }
 
 function descomponerAsiento(numeroAsiento) {
@@ -78,8 +95,9 @@ function normalizarAsiento(asiento) {
   return {
     idAsiento: obtenerCampo(asiento, ['idAsiento', 'id_asiento', 'id']),
     numeroAsiento,
-    disponible: Boolean(obtenerCampo(asiento, ['disponible'], false)),
+    disponible: normalizarDisponibilidad(asiento),
     clase: obtenerCampo(asiento, ['clase'], 'ECONOMICA'),
+    posicion: obtenerCampo(asiento, ['posicion'], ''),
     precioExtra: Number(obtenerCampo(asiento, ['precioExtra', 'precio_extra'], 0)),
     fila: posicion?.fila ?? null,
     columna: posicion?.columna ?? null,
@@ -189,12 +207,9 @@ async function cargarAsientos() {
   cargando.value = true
   errorGeneral.value = ''
   try {
-      const { data } = await getAsientosVueloApi(vuelo.value.idVuelo, {
-        page: 1,
-        page_size: 200,
-      })
+      const { data } = await getAsientosVueloBookingApi(vuelo.value.idVuelo)
 
-    asientosApi.value = normalizarLista(data?.data).map(normalizarAsiento)
+    asientosApi.value = extractItems(data).map(normalizarAsiento)
   } catch (error) {
     errorGeneral.value = error.response?.data?.message || 'No se pudieron cargar los asientos del vuelo.'
   } finally {

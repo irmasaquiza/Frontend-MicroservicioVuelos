@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getEscalasVueloApi, getVueloDetalleApi } from '@/api/vuelos.api'
+import { getEscalasVueloBookingApi, getVueloBookingDetalleApi } from '@/api/vuelos.api'
 import { useCatalogosStore } from '@/stores/catalogos.store'
 import { useReservaStore } from '@/stores/reserva.store'
 import CheckoutStepper from '@/components/CheckoutStepper.vue'
@@ -123,8 +123,8 @@ async function cargarDetalle() {
   try {
     await catalogos.cargarAeropuertos(true).catch(() => {})
     const [detalleResp, escalasResp] = await Promise.all([
-      getVueloDetalleApi(route.params.id),
-      getEscalasVueloApi(route.params.id),
+      getVueloBookingDetalleApi(route.params.id),
+      getEscalasVueloBookingApi(route.params.id),
     ])
 
     vuelo.value = normalizarVuelo(detalleResp.data?.data)

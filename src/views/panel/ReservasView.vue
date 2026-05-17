@@ -418,17 +418,23 @@ async function crearReserva() {
     const totalReserva = Number((subtotalReserva + valorIva).toFixed(2))
 
     const payload = {
-      id_cliente: Number(formCrear.value.id_cliente),
-      id_vuelo: Number(formCrear.value.id_vuelo),
-      fecha_inicio: vuelo?.fechaInicio || null,
-      fecha_fin: vuelo?.fechaFin || null,
-      subtotal_reserva: subtotalReserva,
-      valor_iva: valorIva,
-      total_reserva: totalReserva,
-      origen_canal_reserva: 'PRESENCIAL',
-      contacto_email: cliente?.correo || null,
-      contacto_telefono: cliente?.telefono || null,
-      pasajeros: pasajerosPayload,
+      idCliente: Number(formCrear.value.id_cliente),
+      idVuelo: Number(formCrear.value.id_vuelo),
+      fechaInicio: vuelo?.fechaInicio || null,
+      fechaFin: vuelo?.fechaFin || null,
+      subtotalReserva,
+      valorIva,
+      totalReserva,
+      origenCanalReserva: 'PRESENCIAL',
+      contactoEmail: cliente?.correo || null,
+      contactoTelefono: cliente?.telefono || null,
+      detalles: pasajerosPayload.map((pasajero) => ({
+        idPasajero: pasajero.id_pasajero,
+        idAsiento: pasajero.id_asiento,
+        subtotalLinea: pasajero.subtotal_linea,
+        valorIvaLinea: pasajero.valor_iva_linea,
+        totalLinea: pasajero.total_linea,
+      })),
     }
 
     await createReservaApi(payload)

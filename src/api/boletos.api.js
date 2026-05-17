@@ -3,17 +3,15 @@ import apiClient from './axios'
 export const getBoletosApi = (params = {}) =>
   apiClient.get('/boletos', {
     params: {
-      page: 1,
-      page_size: 100,
-      ...params,
+      idReserva: params.idReserva ?? params.id_reserva,
     },
   })
 
 export const getClienteBoletosApi = () =>
-  apiClient.get('/cliente/boletos')
+  apiClient.get('/portal/cliente/boletos')
 
 export const getClienteReservaBoletosApi = (idReserva) =>
-  apiClient.get(`/cliente/reservas/${idReserva}/boleto`)
+  apiClient.get(`/portal/cliente/reservas/${idReserva}/boleto`)
 
 export const getBoletoApi = (idBoleto) =>
   apiClient.get(`/boletos/${idBoleto}`)

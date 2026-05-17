@@ -388,16 +388,16 @@ async function registrarYProcesar() {
   try {
     estadoProceso.value = 'Creando cuenta...'
     const registroResp = await registerClienteApi({
-      tipo_identificacion: registerForm.value.tipo_identificacion,
-      numero_identificacion: registerForm.value.numero_identificacion.trim(),
+      tipoIdentificacion: registerForm.value.tipo_identificacion,
+      numeroIdentificacion: registerForm.value.numero_identificacion.trim(),
       nombres: registerForm.value.nombres.trim(),
       apellidos: registerForm.value.apellidos.trim(),
       correo: registerForm.value.correo.trim(),
       telefono: registerForm.value.telefono.trim(),
       direccion: registerForm.value.direccion.trim(),
-      id_ciudad_residencia: Number(registerForm.value.id_ciudad_residencia),
-      id_pais_nacionalidad: Number(registerForm.value.id_pais_nacionalidad),
-      fecha_nacimiento: registerForm.value.fecha_nacimiento,
+      idCiudadResidencia: Number(registerForm.value.id_ciudad_residencia),
+      idPaisNacionalidad: Number(registerForm.value.id_pais_nacionalidad),
+      fechaNacimiento: registerForm.value.fecha_nacimiento,
       genero: registerForm.value.genero,
       username: registerForm.value.username.trim(),
       password: registerForm.value.password,
@@ -455,18 +455,18 @@ async function ejecutarCompraReal() {
 
       if (!idPasajero) {
         const payloadPasajero = {
-          nombre_pasajero: item.pasajero.nombre_pasajero.trim(),
-          apellido_pasajero: item.pasajero.apellido_pasajero.trim(),
-          tipo_documento_pasajero: item.pasajero.tipo_documento_pasajero,
-          numero_documento_pasajero: item.pasajero.numero_documento_pasajero.trim(),
-          id_cliente: idCliente,
-          id_pais_nacionalidad: Number(item.pasajero.id_pais_nacionalidad || 0) || undefined,
-          fecha_nacimiento_pasajero: item.pasajero.fecha_nacimiento_pasajero || undefined,
-          email_contacto_pasajero: item.pasajero.email_contacto_pasajero.trim(),
-          telefono_contacto_pasajero: item.pasajero.telefono_contacto_pasajero.trim(),
-          genero_pasajero: item.pasajero.genero_pasajero,
-          requiere_asistencia: Boolean(item.pasajero.requiere_asistencia),
-          observaciones_pasajero: item.pasajero.observaciones_pasajero?.trim() || undefined,
+          idCliente,
+          nombrePasajero: item.pasajero.nombre_pasajero.trim(),
+          apellidoPasajero: item.pasajero.apellido_pasajero.trim(),
+          tipoDocumentoPasajero: item.pasajero.tipo_documento_pasajero,
+          numeroDocumentoPasajero: item.pasajero.numero_documento_pasajero.trim(),
+          fechaNacimientoPasajero: item.pasajero.fecha_nacimiento_pasajero,
+          idPaisNacionalidad: Number(item.pasajero.id_pais_nacionalidad || 0),
+          emailContactoPasajero: item.pasajero.email_contacto_pasajero.trim(),
+          telefonoContactoPasajero: item.pasajero.telefono_contacto_pasajero.trim(),
+          generoPasajero: item.pasajero.genero_pasajero,
+          requiereAsistencia: Boolean(item.pasajero.requiere_asistencia),
+          observacionesPasajero: item.pasajero.observaciones_pasajero?.trim() || null,
         }
 
         const { data } = await createPasajeroApi(payloadPasajero)
@@ -491,28 +491,31 @@ async function ejecutarCompraReal() {
     }
 
     estadoProceso.value = 'Generando reserva...'
-    const payloadReserva = {
-      id_cliente: idCliente,
-      id_vuelo: vuelo.value.idVuelo,
-      fecha_inicio: vuelo.value.fechaHoraSalida,
-      fecha_fin: vuelo.value.fechaHoraLlegada,
-      subtotal_reserva: subtotalVuelo.value,
-      valor_iva: Number((subtotalVuelo.value * IVA).toFixed(2)),
-      total_reserva: Number((subtotalVuelo.value * (1 + IVA)).toFixed(2)),
-      origen_canal_reserva: 'BOOKING',
-      contacto_email: pasajeros.value[0]?.email_contacto_pasajero || registerForm.value.correo || auth.usuario?.correo,
-      contacto_telefono: pasajeros.value[0]?.telefono_contacto_pasajero || registerForm.value.telefono,
+    const idVueloReserva = Number(vuelo.value?.idVuelo ?? vuelo.value?.id_vuelo ?? vuelo.value?.id ?? 0)
+    const payload = {
+      idCliente,
+      idVuelo: idVueloReserva,
+      fechaInicio: vuelo.value.fechaHoraSalida,
+      fechaFin: vuelo.value.fechaHoraLlegada,
+      subtotalReserva: subtotalVuelo.value,
+      valorIva: Number((subtotalVuelo.value * IVA).toFixed(2)),
+      totalReserva: Number((subtotalVuelo.value * (1 + IVA)).toFixed(2)),
+      origenCanalReserva: 'BOOKING',
+      contactoEmail: pasajeros.value[0]?.email_contacto_pasajero || registerForm.value.correo || auth.usuario?.correo,
+      contactoTelefono: pasajeros.value[0]?.telefono_contacto_pasajero || registerForm.value.telefono,
       observaciones: 'Reserva web',
       detalles: pasajerosCreados.map((item) => ({
-        id_pasajero: item.idPasajero,
-        id_asiento: item.idAsiento,
-        subtotal_linea: item.subtotalLinea,
-        valor_iva_linea: item.ivaLinea,
-        total_linea: item.totalLinea,
+        idPasajero: item.idPasajero,
+        idAsiento: item.idAsiento,
+        subtotalLinea: item.subtotalLinea,
+        valorIvaLinea: item.ivaLinea,
+        totalLinea: item.totalLinea,
       })),
     }
 
-    const reservaResp = await createReservaApi(payloadReserva)
+    console.log('PAYLOAD RESERVA:', JSON.stringify(payload))
+
+    const reservaResp = await createReservaApi(payload)
     const reservaReal = reservaResp.data?.data || {}
     const idReserva = reservaReal.idReserva ?? reservaReal.id_reserva ?? reservaReal.id
 

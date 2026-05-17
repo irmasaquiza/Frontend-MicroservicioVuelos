@@ -10,13 +10,16 @@ export const getFacturasApi = (params = {}) =>
   })
 
 export const getClienteFacturasApi = () =>
-  apiClient.get('/cliente/facturas')
+  apiClient.get('/portal/cliente/facturas')
 
 export const getClienteReservaFacturaApi = (idReserva) =>
-  apiClient.get(`/cliente/reservas/${idReserva}/factura`)
+  apiClient.get(`/portal/cliente/reservas/${idReserva}/factura`)
 
 export const getFacturaApi = (idFactura) =>
   apiClient.get(`/facturas/${idFactura}`)
+
+export const getFacturaReservaApi = (idReserva) =>
+  apiClient.get(`/facturas/reserva/${idReserva}`)
 
 export const anularFacturaApi = (idFactura, payload = {}) =>
   apiClient.patch(`/facturas/${idFactura}/anular`, payload)
