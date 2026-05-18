@@ -588,7 +588,7 @@ onMounted(cargarTodo)
           <div class="grid gap-5">
             <InputApp v-model="formPago.cargo_servicio" tipo="number" label="Cargo servicio" />
 
-            <div class="rounded-[24px] border border-blue-100 bg-blue-50 px-5 py-4 text-sm text-blue-900">
+            <div class="rounded-[24px] border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-900">
               El sistema generara el cobro completo con factura, boletos y equipajes asociados en un solo paso.
             </div>
 

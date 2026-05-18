@@ -1,7 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { IMAGENES } from '@/config/imagenes'
 import { useCatalogosStore } from '@/stores/catalogos.store'
 
 const router = useRouter()
@@ -21,15 +20,15 @@ const opcionesAeropuertos = computed(() => catalogos.opcionesAeropuertos)
 
 const ventajas = [
   {
-    titulo: 'Red Global',
-    texto: 'Más de 200 destinos en 6 continentes. Conectamos el mundo entero.',
-    color: 'bg-blue-50 text-navy',
+    titulo: 'Rutas ágiles',
+    texto: 'Conectamos tus destinos favoritos con una experiencia simple y directa.',
+    color: 'bg-red-50 text-navy',
     icono: 'globe',
   },
   {
-    titulo: 'Servicio Premium',
-    texto: 'Atención personalizada 24/7. Tu comodidad es nuestra prioridad.',
-    color: 'bg-amber-50 text-gold-dark',
+    titulo: 'Atención cercana',
+    texto: 'Acompañamiento claro antes, durante y después de tu vuelo.',
+    color: 'bg-red-50 text-gold-dark',
     icono: 'star',
   },
   {
@@ -93,29 +92,26 @@ function cargarAeropuertosSiHaceFalta() {
 
 <template>
   <div>
-    <section class="relative overflow-hidden bg-navy">
-      <img
-        :src="IMAGENES.heroAvion"
-        alt="Avión comercial de MPAS Airways"
-        class="absolute inset-0 h-full w-full object-cover object-center opacity-20"
-      />
-      <div class="absolute inset-0 bg-[linear-gradient(90deg,rgba(11,31,59,0.95)_0%,rgba(11,31,59,0.88)_38%,rgba(19,51,92,0.72)_100%)]" />
+    <section class="relative overflow-hidden bg-[linear-gradient(135deg,#d71920_0%,#b9151b_55%,#8f1116_100%)]">
+      <div class="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10" />
+      <div class="absolute -bottom-28 left-10 h-80 w-80 rounded-full bg-white/10" />
 
       <div class="relative mx-auto max-w-7xl px-4 pb-16 pt-12 sm:px-6 lg:px-8 lg:pb-24 lg:pt-20">
         <div class="mx-auto max-w-4xl text-center">
+          <p class="text-sm font-semibold uppercase tracking-[0.32em] text-white/70">Hecho con sabor ecuatoriano</p>
           <h1 class="text-5xl font-extrabold leading-tight text-white sm:text-6xl">
-            Vuela con <span class="text-gold">Elegancia</span>
+            NachoFlights te lleva, ñaño
           </h1>
           <p class="mx-auto mt-6 max-w-3xl text-xl leading-9 text-white/90">
-            Descubre el mundo con MPAS Airways. Conectamos destinos, creamos experiencias.
+            Reserva de una, sin vueltas y con la buena vibra de Ecuador. Tu chulla vuelo empieza aqui.
           </p>
         </div>
 
-        <div class="mx-auto mt-14 max-w-5xl rounded-[30px] bg-white p-5 shadow-[0_22px_65px_rgba(7,16,32,0.22)] sm:p-8">
-          <div class="mb-7 flex flex-wrap gap-3">
+        <div class="mx-auto mt-12 max-w-7xl rounded-[30px] bg-white p-4 shadow-[0_22px_65px_rgba(7,16,32,0.22)] sm:p-5">
+          <div class="mb-4 flex flex-wrap gap-2">
             <button
               type="button"
-              class="rounded-2xl px-6 py-3 text-lg font-semibold transition-colors"
+              class="rounded-2xl px-5 py-2.5 text-sm font-semibold transition-colors"
               :class="tipoViaje === 'IDA_VUELTA' ? 'bg-navy text-white' : 'bg-slate-100 text-text-main hover:bg-slate-200'"
               @click="tipoViaje = 'IDA_VUELTA'"
             >
@@ -123,7 +119,7 @@ function cargarAeropuertosSiHaceFalta() {
             </button>
             <button
               type="button"
-              class="rounded-2xl px-6 py-3 text-lg font-semibold transition-colors"
+              class="rounded-2xl px-5 py-2.5 text-sm font-semibold transition-colors"
               :class="tipoViaje === 'SOLO_IDA' ? 'bg-navy text-white' : 'bg-slate-100 text-text-main hover:bg-slate-200'"
               @click="tipoViaje = 'SOLO_IDA'"
             >
@@ -131,87 +127,69 @@ function cargarAeropuertosSiHaceFalta() {
             </button>
           </div>
 
-          <form class="space-y-6" @submit.prevent="buscarVuelos">
-            <div class="grid gap-5 lg:grid-cols-2">
-              <label class="block">
-                <span class="mb-2 flex items-center gap-2 text-lg font-semibold text-navy">
-                  <svg class="h-5 w-5 text-blue-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M12 21c4.97-4.244 7.5-7.744 7.5-10.5a7.5 7.5 0 10-15 0c0 2.756 2.53 6.256 7.5 10.5z" />
-                    <circle cx="12" cy="10.5" r="2.25" stroke-width="1.9" />
-                  </svg>
+          <form class="grid gap-3 xl:grid-cols-[1.1fr_1.1fr_170px_170px_180px] xl:items-start" @submit.prevent="buscarVuelos">
+            <label class="block">
+              <span class="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-navy">
                   Origen
-                </span>
-                <select
-                  v-model="form.origen"
-                  class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-lg text-text-main outline-none transition focus:border-blue-accent focus:ring-4 focus:ring-blue-accent/10"
-                  @focus="cargarAeropuertosSiHaceFalta"
-                >
-                  <option value="">¿Desde dónde viajas?</option>
-                  <option v-for="opcion in opcionesAeropuertos" :key="`origen-${opcion.valor}`" :value="opcion.valor">
-                    {{ opcion.etiqueta }}
-                  </option>
-                </select>
-                <p v-if="errores.origen" class="mt-2 text-sm text-error">{{ errores.origen }}</p>
-              </label>
+              </span>
+              <select
+                v-model="form.origen"
+                class="h-14 w-full rounded-2xl border border-red-100 bg-red-50/60 px-4 text-sm text-text-main outline-none transition focus:border-blue-accent focus:ring-4 focus:ring-blue-accent/10"
+                @focus="cargarAeropuertosSiHaceFalta"
+              >
+                <option value="">¿Desde dónde viajas?</option>
+                <option v-for="opcion in opcionesAeropuertos" :key="`origen-${opcion.valor}`" :value="opcion.valor">
+                  {{ opcion.etiqueta }}
+                </option>
+              </select>
+              <p v-if="errores.origen" class="mt-2 text-xs text-error">{{ errores.origen }}</p>
+            </label>
 
-              <label class="block">
-                <span class="mb-2 flex items-center gap-2 text-lg font-semibold text-navy">
-                  <svg class="h-5 w-5 text-blue-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M12 21c4.97-4.244 7.5-7.744 7.5-10.5a7.5 7.5 0 10-15 0c0 2.756 2.53 6.256 7.5 10.5z" />
-                    <circle cx="12" cy="10.5" r="2.25" stroke-width="1.9" />
-                  </svg>
+            <label class="block">
+              <span class="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-navy">
                   Destino
-                </span>
-                <select
-                  v-model="form.destino"
-                  class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-lg text-text-main outline-none transition focus:border-blue-accent focus:ring-4 focus:ring-blue-accent/10"
-                  @focus="cargarAeropuertosSiHaceFalta"
-                >
-                  <option value="">¿A dónde quieres ir?</option>
-                  <option v-for="opcion in opcionesAeropuertos" :key="`destino-${opcion.valor}`" :value="opcion.valor">
-                    {{ opcion.etiqueta }}
-                  </option>
-                </select>
-                <p v-if="errores.destino" class="mt-2 text-sm text-error">{{ errores.destino }}</p>
-              </label>
-            </div>
+              </span>
+              <select
+                v-model="form.destino"
+                class="h-14 w-full rounded-2xl border border-red-100 bg-red-50/60 px-4 text-sm text-text-main outline-none transition focus:border-blue-accent focus:ring-4 focus:ring-blue-accent/10"
+                @focus="cargarAeropuertosSiHaceFalta"
+              >
+                <option value="">¿A dónde quieres ir?</option>
+                <option v-for="opcion in opcionesAeropuertos" :key="`destino-${opcion.valor}`" :value="opcion.valor">
+                  {{ opcion.etiqueta }}
+                </option>
+              </select>
+              <p v-if="errores.destino" class="mt-2 text-xs text-error">{{ errores.destino }}</p>
+            </label>
 
-            <div class="grid gap-5 md:grid-cols-2">
-              <label class="block">
-                <span class="mb-2 flex items-center gap-2 text-lg font-semibold text-navy">
-                  <svg class="h-5 w-5 text-blue-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
+            <label class="block">
+              <span class="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-navy">
                   Salida
-                </span>
-                <input
-                  v-model="form.salida"
-                  type="date"
-                  class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-lg text-text-main outline-none transition focus:border-blue-accent focus:ring-4 focus:ring-blue-accent/10"
-                />
-                <p v-if="errores.salida" class="mt-2 text-sm text-error">{{ errores.salida }}</p>
-              </label>
+              </span>
+              <input
+                v-model="form.salida"
+                type="date"
+                class="h-14 w-full rounded-2xl border border-red-100 bg-red-50/60 px-4 text-sm text-text-main outline-none transition focus:border-blue-accent focus:ring-4 focus:ring-blue-accent/10"
+              />
+              <p v-if="errores.salida" class="mt-2 text-xs text-error">{{ errores.salida }}</p>
+            </label>
 
-              <label v-if="tipoViaje === 'IDA_VUELTA'" class="block">
-                <span class="mb-2 flex items-center gap-2 text-lg font-semibold text-navy">
-                  <svg class="h-5 w-5 text-blue-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
+            <label class="block" :class="tipoViaje !== 'IDA_VUELTA' && 'opacity-45'">
+              <span class="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-navy">
                   Regreso
-                </span>
-                <input
-                  v-model="form.regreso"
-                  type="date"
-                  class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-lg text-text-main outline-none transition focus:border-blue-accent focus:ring-4 focus:ring-blue-accent/10"
-                />
-                <p v-if="errores.regreso" class="mt-2 text-sm text-error">{{ errores.regreso }}</p>
-              </label>
-
-            </div>
+              </span>
+              <input
+                v-model="form.regreso"
+                type="date"
+                :disabled="tipoViaje !== 'IDA_VUELTA'"
+                class="h-14 w-full rounded-2xl border border-red-100 bg-red-50/60 px-4 text-sm text-text-main outline-none transition focus:border-blue-accent focus:ring-4 focus:ring-blue-accent/10 disabled:cursor-not-allowed"
+              />
+              <p v-if="errores.regreso" class="mt-2 text-xs text-error">{{ errores.regreso }}</p>
+            </label>
 
             <button
               type="submit"
-              class="flex w-full items-center justify-center gap-3 rounded-2xl bg-gold px-6 py-4 text-xl font-semibold text-navy transition-colors hover:bg-gold-light"
+              class="mt-[22px] flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-gold px-6 text-base font-semibold text-white transition-colors hover:bg-gold-light"
             >
               <span
                 v-if="cargandoBusqueda"
@@ -220,7 +198,7 @@ function cargarAeropuertosSiHaceFalta() {
               <svg v-else class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              Buscar Vuelos
+              Buscar vuelos
             </button>
           </form>
         </div>
@@ -228,29 +206,34 @@ function cargarAeropuertosSiHaceFalta() {
     </section>
 
     <section class="bg-white py-20">
-      <div class="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:px-8">
-        <div class="overflow-hidden rounded-[28px] shadow-[0_24px_70px_rgba(12,31,59,0.18)]">
-          <img :src="IMAGENES.heroAvion" alt="Quiénes somos en MPAS Airways" class="h-full w-full object-cover" />
+      <div class="mx-auto grid max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
+        <div class="rounded-[30px] border border-red-100 bg-red-50 p-8 shadow-sm">
+          <p class="text-sm font-semibold uppercase tracking-[0.26em] text-gold-dark">Encanto local</p>
+          <h3 class="mt-5 text-4xl font-extrabold text-navy">De Quito a donde toque, de una.</h3>
+          <div class="mt-8 space-y-4 text-lg text-text-muted">
+            <p>Viajes claros, precios visibles y una experiencia sin tanta vuelta.</p>
+            <p>Con cariño ecuatoriano: pilas, reserva y despega tranquilo.</p>
+          </div>
         </div>
 
         <div class="flex flex-col justify-center">
           <span class="text-sm font-semibold uppercase tracking-[0.26em] text-gold-dark">Quiénes Somos</span>
-          <h2 class="mt-5 text-4xl font-bold text-navy sm:text-5xl">Una aerolínea pensada para viajar con estilo</h2>
+          <h2 class="mt-5 text-4xl font-bold text-navy sm:text-5xl">Una aerolínea roja, moderna y fácil de usar</h2>
           <p class="mt-6 text-lg leading-8 text-text-muted">
-            En MPAS Airways diseñamos experiencias de viaje claras, elegantes y bien conectadas. Nuestro enfoque combina tecnología, atención cercana y rutas pensadas para que reservar sea tan agradable como el vuelo mismo.
+            En NachoFlights diseñamos experiencias de viaje claras, rápidas y bien conectadas. Nuestro enfoque combina tecnología, atención cercana y rutas pensadas para que reservar sea tan simple como despegar.
           </p>
           <p class="mt-4 text-lg leading-8 text-text-muted">
-            Desde la búsqueda de destinos hasta la gestión de tu reserva, queremos que cada detalle transmita confianza, comodidad y una identidad premium.
+            Desde la busqueda de destinos hasta la gestion de tu reserva, queremos que cada detalle transmita confianza, comodidad y ese encanto de casa.
           </p>
 
           <div class="mt-8 grid gap-6 sm:grid-cols-2">
             <div class="rounded-3xl bg-slate-50 px-6 py-5">
               <p class="text-3xl font-extrabold text-gold-dark">200+</p>
-              <p class="mt-1 text-sm font-medium text-text-muted">Destinos conectados globalmente</p>
+              <p class="mt-1 text-sm font-medium text-text-muted">Destinos listos para despegar</p>
             </div>
             <div class="rounded-3xl bg-slate-50 px-6 py-5">
               <p class="text-3xl font-extrabold text-gold-dark">24/7</p>
-              <p class="mt-1 text-sm font-medium text-text-muted">Acompañamiento y soporte continuo</p>
+              <p class="mt-1 text-sm font-medium text-text-muted">Acompanamiento pilas siempre</p>
             </div>
           </div>
         </div>
@@ -259,8 +242,8 @@ function cargarAeropuertosSiHaceFalta() {
 
     <section class="bg-[#F7F8FB] py-20">
       <div class="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
-        <h2 class="text-4xl font-bold text-navy">¿Por qué volar con MPAS Airways?</h2>
-        <p class="mt-4 text-xl text-text-muted">Experiencia premium en cada detalle</p>
+        <h2 class="text-4xl font-bold text-navy">¿Por qué volar con NachoFlights?</h2>
+        <p class="mt-4 text-xl text-text-muted">Una experiencia clara, roja y lista para despegar</p>
 
         <div class="mt-14 grid gap-8 lg:grid-cols-3">
           <article
@@ -282,16 +265,13 @@ function cargarAeropuertosSiHaceFalta() {
 
     <section class="bg-white py-20">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="relative overflow-hidden rounded-[30px] bg-[linear-gradient(120deg,#183761_0%,#1E497C_100%)] px-8 py-16 text-center shadow-[0_20px_50px_rgba(11,31,59,0.18)] sm:px-16">
-          <img
-            :src="IMAGENES.heroAvion"
-            alt="Explorar destinos"
-            class="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-10"
-          />
+        <div class="relative overflow-hidden rounded-[30px] bg-[linear-gradient(120deg,#d71920_0%,#9f1117_100%)] px-8 py-16 text-center shadow-[0_20px_50px_rgba(215,25,32,0.22)] sm:px-16">
+          <div class="pointer-events-none absolute -left-16 top-8 h-40 w-40 rounded-full bg-white/10" />
+          <div class="pointer-events-none absolute -right-10 bottom-8 h-48 w-48 rounded-full bg-white/10" />
           <div class="relative mx-auto max-w-3xl">
-            <h2 class="text-4xl font-bold text-white">¿Listo para tu próxima aventura?</h2>
+            <h2 class="text-4xl font-bold text-white">¿Listo para tu proxima aventura?</h2>
             <p class="mt-5 text-xl leading-9 text-white/90">
-              Reserva hoy y aprovecha nuestras ofertas exclusivas en vuelos internacionales
+              Reserva hoy, ñaño. En NachoFlights volamos con buena vibra y sin complicarte.
             </p>
             <button
               type="button"

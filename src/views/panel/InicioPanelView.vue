@@ -28,8 +28,8 @@ const modulos = computed(() => {
     },
     {
       titulo: 'Gestion Operativa',
-      color: 'text-blue-600',
-      fondo: 'from-blue-50 to-white',
+      color: 'text-red-600',
+      fondo: 'from-red-50 to-white',
       icono: 'GO',
       descripcion: 'Vuelos, escalas, asientos y equipaje para la operacion diaria.',
       items: [
@@ -64,7 +64,7 @@ function navegar(item) {
 
 <template>
   <section class="space-y-8">
-    <div class="overflow-hidden rounded-[30px] bg-gradient-to-r from-white via-white to-[#f4f7fc] p-8 shadow-sm">
+    <div class="overflow-hidden rounded-[30px] bg-gradient-to-r from-white via-white to-red-50 p-8 shadow-sm">
       <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p class="text-sm font-semibold uppercase tracking-[0.28em] text-gold-dark">Centro de control</p>

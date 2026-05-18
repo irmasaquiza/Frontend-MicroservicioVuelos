@@ -1,7 +1,6 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { IMAGENES } from '@/config/imagenes'
 import { usePanelPermisos } from '@/composables/usePanelPermisos'
 
 const { auth, tituloPanel } = usePanelPermisos()
@@ -74,100 +73,65 @@ async function cerrarSesion() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#eff3f9] text-navy">
-    <div class="mx-auto flex min-h-screen max-w-[1600px]">
-      <aside class="flex w-[240px] flex-col bg-gradient-to-b from-[#0f274a] via-[#132f57] to-[#102544] px-4 py-5 text-white shadow-2xl">
-        <div class="mb-6 rounded-[26px] border border-white/10 bg-white/5 px-4 py-4 backdrop-blur">
-          <div class="flex items-center gap-3">
-            <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
-              <img :src="IMAGENES.logoPrincipal" alt="MPAS Airways" class="h-7 w-7 object-contain" />
-            </div>
-            <div>
-              <p class="text-[10px] uppercase tracking-[0.35em] text-gold/70">Panel</p>
-              <h1 class="text-[1.05rem] font-semibold">{{ tituloPanel }}</h1>
-            </div>
-          </div>
-
-          <div class="mt-4 rounded-2xl bg-[#193b6d]/80 px-4 py-3">
-            <p class="text-xs uppercase tracking-[0.12em] text-white/60">Sesion activa</p>
-            <p class="mt-1 text-lg font-semibold text-white">{{ panelRole }}</p>
-          </div>
-        </div>
-
-        <div class="mb-3 px-2">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.26em] text-white/45">Navegacion</p>
-        </div>
-
-        <nav class="space-y-2">
-          <RouterLink
-            v-for="item in menuItems"
-            :key="item.label"
-            :to="item.ruta"
-            :class="[
-              'group flex items-center gap-3 rounded-[20px] px-4 py-3 text-sm font-medium transition-all',
-              itemActivo(item.ruta)
-                ? 'bg-gold text-navy shadow-[0_12px_24px_rgba(219,174,55,0.22)]'
-                : 'text-white/82 hover:bg-white/10 hover:text-white',
-            ]"
-          >
-            <span
-              :class="[
-                'flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
-                itemActivo(item.ruta) ? 'bg-navy/10 text-navy' : 'bg-white/8 text-white/88 group-hover:bg-white/12',
-              ]"
-            >
-              <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.8"
-                  :d="iconoPath(item.icono)"
-                />
-              </svg>
-            </span>
-            <span>{{ item.label }}</span>
-          </RouterLink>
-        </nav>
-
-        <div class="mt-auto space-y-4 pt-6">
-          <div class="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-            <p class="text-2xl font-bold leading-none">{{ panelLabel }}</p>
-            <p class="mt-1.5 text-xs uppercase tracking-[0.12em] text-white/60">Workspace MPAS</p>
-            <p class="mt-3 text-sm leading-6 text-white/72">
-              Opera vuelos, reservas y seguimiento comercial desde un solo lugar.
+  <div class="min-h-screen bg-background text-navy">
+    <div class="mx-auto min-h-screen max-w-[1600px] px-5 py-5 lg:px-8">
+      <header class="overflow-hidden rounded-[30px] bg-gradient-to-r from-[#d71920] via-[#c5161d] to-[#9f1117] p-6 text-white shadow-xl shadow-red-200/50">
+        <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.32em] text-white/70">Panel NachoFlights</p>
+            <h1 class="mt-2 text-4xl font-extrabold">Administracion por cubitos</h1>
+            <p class="mt-2 max-w-2xl text-white/82">
+              Todo a la vista, sin barra lateral. A gestionar rapidito, ñaño.
             </p>
           </div>
 
-          <div class="space-y-2">
-            <RouterLink
-              to="/"
-              class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-white/85 transition-colors hover:bg-white/10 hover:text-white"
-            >
-              <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-white/8 text-sm font-semibold">
-                <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="iconoPath('home')" />
-                </svg>
-              </span>
-              <span>Ir al Inicio</span>
+          <div class="flex flex-wrap gap-3">
+            <div class="rounded-2xl bg-white/12 px-4 py-3">
+              <p class="text-xs uppercase tracking-[0.16em] text-white/60">Rol</p>
+              <p class="mt-1 font-semibold">{{ panelRole }}</p>
+            </div>
+            <RouterLink to="/" class="rounded-2xl border border-white/25 px-4 py-3 text-sm font-semibold hover:bg-white/10">
+              Ir al Inicio
             </RouterLink>
-
             <button
               type="button"
-              class="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-white/85 transition-colors hover:bg-white/10 hover:text-white"
+              class="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-[#d71920] hover:bg-red-50"
               @click="cerrarSesion"
             >
-              <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-white/8 text-sm font-semibold">
-                <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="iconoPath('logout')" />
-                </svg>
-              </span>
-              <span>Cerrar Sesion</span>
+              Cerrar Sesion
             </button>
           </div>
         </div>
-      </aside>
+      </header>
 
-      <main class="flex-1 px-8 py-6">
+      <nav class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+        <RouterLink
+          v-for="item in menuItems"
+          :key="item.label"
+          :to="item.ruta"
+          :class="[
+            'group rounded-[24px] border p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg',
+            itemActivo(item.ruta)
+              ? 'border-[#d71920] bg-[#d71920] text-white shadow-red-100'
+              : 'border-red-100 bg-white text-navy hover:border-[#d71920]',
+          ]"
+        >
+          <span
+            :class="[
+              'flex h-12 w-12 items-center justify-center rounded-2xl transition-colors',
+              itemActivo(item.ruta) ? 'bg-white/18 text-white' : 'bg-red-50 text-[#d71920] group-hover:bg-red-100',
+            ]"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" :d="iconoPath(item.icono)" />
+            </svg>
+          </span>
+          <p class="mt-4 text-lg font-bold">{{ item.label }}</p>
+          <p class="mt-1 text-xs opacity-70">Abrir gestion</p>
+        </RouterLink>
+      </nav>
+
+      <main class="mt-6">
         <RouterView />
       </main>
     </div>

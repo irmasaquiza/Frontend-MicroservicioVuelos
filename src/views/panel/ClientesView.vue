@@ -7,6 +7,14 @@ import { getCiudadesApi } from '@/api/ciudades.api'
 import { getPaisesApi } from '@/api/paises.api'
 import { usePanelPermisos } from '@/composables/usePanelPermisos'
 import { deepValue, extractItems } from '@/utils/portalCliente'
+import {
+  esTipoDocumentoSoloDigitos,
+  limiteDocumento,
+  normalizarDocumento,
+  normalizarTelefono,
+  validarDocumentoPorTipo,
+  validarTelefono,
+} from '@/utils/validacionesCampos'
 
 const TIPOS_IDENTIFICACION = ['CEDULA', 'PASAPORTE', 'RUC', 'OTRO']
 const GENEROS = ['MASCULINO', 'FEMENINO', 'OTRO']
@@ -256,14 +264,20 @@ function validar() {
   const fechaNacimiento = String(form.value.fecha_nacimiento || '').trim()
   const genero = String(form.value.genero || '').trim().toUpperCase()
   const GENEROS_VALIDOS = ['MASCULINO', 'FEMENINO', 'OTRO']
+  const errorDocumento = validarDocumentoPorTipo(
+    form.value.tipo_identificacion,
+    form.value.numero_identificacion,
+    'identificacion',
+  )
+  const errorTelefono = validarTelefono(form.value.telefono)
 
   if (!form.value.tipo_identificacion) nuevosErrores.tipo_identificacion = 'Selecciona el tipo de identificación.'
-  if (!String(form.value.numero_identificacion || '').trim()) nuevosErrores.numero_identificacion = 'Ingresa el número de identificación.'
+  if (errorDocumento) nuevosErrores.numero_identificacion = errorDocumento
   if (!esRUC.value && !String(form.value.nombres || '').trim()) nuevosErrores.nombres = 'Ingresa los nombres.'
   if (esRUC.value && !String(form.value.razon_social || '').trim()) nuevosErrores.razon_social = 'La razón social es obligatoria para RUC.'
   if (!correo) nuevosErrores.correo = 'Ingresa el correo.'
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) nuevosErrores.correo = 'Ingresa un correo válido.'
-  if (!String(form.value.telefono || '').trim()) nuevosErrores.telefono = 'Ingresa el teléfono.'
+  if (errorTelefono) nuevosErrores.telefono = errorTelefono
   if (!String(form.value.direccion || '').trim()) nuevosErrores.direccion = 'Ingresa la dirección.'
   if (!form.value.id_ciudad_residencia) nuevosErrores.id_ciudad_residencia = 'Selecciona la ciudad de residencia.'
   if (!form.value.id_pais_nacionalidad) nuevosErrores.id_pais_nacionalidad = 'Selecciona el país / nacionalidad.'
@@ -369,6 +383,22 @@ watch(
   () => form.value.apellidos,
   (valor) => {
     form.value.apellidos = capitalizarTexto(valor)
+  },
+)
+
+watch(
+  [() => form.value.tipo_identificacion, () => form.value.numero_identificacion],
+  () => {
+    const normalizado = normalizarDocumento(form.value.tipo_identificacion, form.value.numero_identificacion)
+    if (form.value.numero_identificacion !== normalizado) form.value.numero_identificacion = normalizado
+  },
+)
+
+watch(
+  () => form.value.telefono,
+  (valor) => {
+    const normalizado = normalizarTelefono(valor)
+    if (form.value.telefono !== normalizado) form.value.telefono = normalizado
   },
 )
 
@@ -591,14 +621,31 @@ onMounted(async () => {
 
         <div class="mt-6 grid gap-5 md:grid-cols-2">
           <SelectApp v-model="form.tipo_identificacion" label="Tipo de identificación" :opciones="opcionesTipoIdentificacion" :error="errores.tipo_identificacion" requerido />
-          <InputApp v-model="form.numero_identificacion" label="Número de identificación" :error="errores.numero_identificacion" requerido />
+          <InputApp
+            v-model="form.numero_identificacion"
+            label="Número de identificación"
+            inputmode="numeric"
+            :maxlength="limiteDocumento(form.tipo_identificacion)"
+            :filtro-solo-digitos="esTipoDocumentoSoloDigitos(form.tipo_identificacion)"
+            :error="errores.numero_identificacion"
+            requerido
+          />
           <InputApp v-model="form.nombres" label="Nombres" :error="errores.nombres" requerido />
           <InputApp v-model="form.apellidos" label="Apellidos" />
           <div v-if="esRUC" class="md:col-span-2">
             <InputApp v-model="form.razon_social" label="Razón social" :error="errores.razon_social" :requerido="esRUC" />
           </div>
           <InputApp v-model="form.correo" label="Correo" :error="errores.correo" requerido />
-          <InputApp v-model="form.telefono" label="Teléfono" :error="errores.telefono" requerido />
+          <InputApp
+            v-model="form.telefono"
+            label="Teléfono"
+            tipo="tel"
+            inputmode="numeric"
+            maxlength="10"
+            filtro-solo-digitos
+            :error="errores.telefono"
+            requerido
+          />
           <div class="md:col-span-2">
             <InputApp v-model="form.direccion" label="Dirección" :error="errores.direccion" requerido />
           </div>

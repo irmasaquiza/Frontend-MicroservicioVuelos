@@ -7,14 +7,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        navy:         '#0B1F3B',
-        'navy-light': '#123A6B',
-        'blue-accent':'#1F5FA5',
-        gold:         '#D4A63A',
-        'gold-light': '#F2C94C',
-        'gold-dark':  '#B88A2A',
-        background:   '#F5F7FA',
-        border:       '#E5E7EB',
+        navy:         '#111827',
+        'navy-light': '#B9151B',
+        'blue-accent':'#D71920',
+        gold:         '#D71920',
+        'gold-light': '#EF4444',
+        'gold-dark':  '#B9151B',
+        background:   '#FFF7F7',
+        border:       '#F3D6D8',
         'text-muted': '#6B7280',
         'text-main':  '#111827',
         success:      '#22C55E',

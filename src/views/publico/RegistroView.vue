@@ -5,10 +5,17 @@ import { useAutenticacionStore } from '@/stores/autenticacion.store'
 import { useReservaStore } from '@/stores/reserva.store'
 import { registerClienteApi } from '@/api/autenticacion.api'
 import { useCatalogosStore } from '@/stores/catalogos.store'
-import { IMAGENES } from '@/config/imagenes'
 import InputApp from '@/components/base/InputApp.vue'
 import SelectApp from '@/components/base/SelectApp.vue'
 import BotonApp from '@/components/base/BotonApp.vue'
+import {
+  esTipoDocumentoSoloDigitos,
+  limiteDocumento,
+  normalizarDocumento,
+  normalizarTelefono,
+  validarDocumentoPorTipo,
+  validarTelefono,
+} from '@/utils/validacionesCampos'
 
 const router = useRouter()
 const auth = useAutenticacionStore()
@@ -75,6 +82,22 @@ const form = ref({
 const esRUC = computed(() => form.value.tipo_identificacion === 'RUC')
 
 watch(
+  [() => form.value.tipo_identificacion, () => form.value.numero_identificacion],
+  () => {
+    const normalizado = normalizarDocumento(form.value.tipo_identificacion, form.value.numero_identificacion)
+    if (form.value.numero_identificacion !== normalizado) form.value.numero_identificacion = normalizado
+  },
+)
+
+watch(
+  () => form.value.telefono,
+  (valor) => {
+    const normalizado = normalizarTelefono(valor)
+    if (form.value.telefono !== normalizado) form.value.telefono = normalizado
+  },
+)
+
+watch(
   () => form.value.pais_residencia_tmp,
   async (idPais) => {
     ciudades.value = []
@@ -106,13 +129,20 @@ function validarPassword(p) {
 
 function validar() {
   const e = {}
+  const errorDocumento = validarDocumentoPorTipo(
+    form.value.tipo_identificacion,
+    form.value.numero_identificacion,
+    'identificación',
+  )
+  const errorTelefono = validarTelefono(form.value.telefono)
+
   if (!form.value.tipo_identificacion) e.tipo_identificacion = 'Selecciona el tipo.'
-  if (!form.value.numero_identificacion.trim()) e.numero_identificacion = 'Requerido.'
+  if (errorDocumento) e.numero_identificacion = errorDocumento
   if (esRUC.value && !form.value.razon_social.trim()) e.razon_social = 'Requerido para RUC.'
   if (!form.value.nombres.trim()) e.nombres = 'Requerido.'
   if (!form.value.correo.trim()) e.correo = 'Requerido.'
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.correo)) e.correo = 'Correo inválido.'
-  if (!form.value.telefono.trim()) e.telefono = 'Requerido.'
+  if (errorTelefono) e.telefono = errorTelefono
   if (!form.value.direccion.trim()) e.direccion = 'Requerido.'
   if (!form.value.id_pais_nacionalidad) e.id_pais_nacionalidad = 'Selecciona la nacionalidad.'
   if (!form.value.pais_residencia_tmp) e.pais_residencia_tmp = 'Selecciona el país.'
@@ -191,12 +221,12 @@ async function handleRegistro() {
   <div class="min-h-[calc(100vh-64px)] bg-background px-4 py-10">
     <div class="mx-auto max-w-4xl">
       <div class="mb-8 text-center">
-        <div class="inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-gold shadow-lg">
-          <img :src="IMAGENES.logoPrincipal" alt="MPAS Airways" class="h-12 w-12 object-contain" />
+        <div class="inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-3xl bg-gold text-2xl font-extrabold text-white shadow-lg">
+          NF
         </div>
         <h1 class="mt-5 text-4xl font-bold">
-          <span class="text-navy">MPAS</span>
-          <span class="ml-2 text-gold">Airways</span>
+          <span class="text-navy">Nacho</span>
+          <span class="ml-2 text-gold">Flights</span>
         </h1>
         <p class="mt-3 text-lg text-text-muted">Crea tu cuenta para completar tu reserva</p>
       </div>
@@ -231,6 +261,9 @@ async function handleRegistro() {
               <InputApp
                 v-model="form.numero_identificacion"
                 label="Número de Identificación"
+                inputmode="numeric"
+                :maxlength="limiteDocumento(form.tipo_identificacion)"
+                :filtro-solo-digitos="esTipoDocumentoSoloDigitos(form.tipo_identificacion)"
                 :error="errores.numero_identificacion"
                 requerido
               />
@@ -316,7 +349,10 @@ async function handleRegistro() {
                 v-model="form.telefono"
                 label="Teléfono"
                 tipo="tel"
+                inputmode="numeric"
+                maxlength="10"
                 autocomplete="tel"
+                filtro-solo-digitos
                 :error="errores.telefono"
                 requerido
               />

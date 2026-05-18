@@ -22,8 +22,8 @@ defineEmits(['update:modelValue'])
         :value="modelValue"
         :disabled="deshabilitado || cargando"
         :class="[
-          'w-full px-4 py-3 pr-10 rounded-xl bg-gray-100 text-sm appearance-none',
-          'border border-transparent focus:outline-none focus:border-blue-accent focus:ring-2 focus:ring-blue-accent/20',
+          'w-full px-4 py-3 pr-10 rounded-xl bg-red-50/60 text-sm appearance-none',
+          'border border-red-100 focus:outline-none focus:border-blue-accent focus:ring-2 focus:ring-blue-accent/20',
           'transition-all duration-200 cursor-pointer',
           !modelValue ? 'text-text-muted' : 'text-text-main',
           error && '!border-error focus:!ring-error/20',

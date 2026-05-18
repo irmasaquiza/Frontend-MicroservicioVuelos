@@ -82,13 +82,13 @@ function money(valor) {
 function badgeTipo(tipo) {
   return String(tipo || '').trim().toUpperCase() === 'BODEGA'
     ? 'bg-amber-100 text-amber-800'
-    : 'bg-sky-100 text-sky-800'
+    : 'bg-red-100 text-red-800'
 }
 
 function badgeEstado(estado) {
   const valor = String(estado || '').trim().toUpperCase()
   if (valor === 'REGISTRADO') return 'bg-slate-100 text-slate-700'
-  if (valor === 'EMBARCADO' || valor === 'EN_TRANSITO') return 'bg-blue-100 text-blue-700'
+  if (valor === 'EMBARCADO' || valor === 'EN_TRANSITO') return 'bg-red-100 text-red-700'
   if (valor === 'ENTREGADO') return 'bg-emerald-100 text-emerald-700'
   if (valor === 'PERDIDO' || valor === 'DANADO') return 'bg-red-100 text-red-700'
   return 'bg-orange-100 text-orange-700'

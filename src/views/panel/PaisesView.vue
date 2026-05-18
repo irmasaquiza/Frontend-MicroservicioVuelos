@@ -205,7 +205,7 @@ onMounted(cargarPaises)
     <div class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-[2rem] font-bold text-navy">Gestion de Paises</h1>
-        <p class="mt-1.5 text-sm text-text-muted">Administra los paises donde opera MPAS Airways (Solo ADMIN).</p>
+        <p class="mt-1.5 text-sm text-text-muted">Administra los paises donde opera NachoFlights (Solo ADMIN).</p>
       </div>
 
       <button

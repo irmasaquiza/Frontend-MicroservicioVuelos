@@ -261,7 +261,7 @@ onMounted(cargarDetalle)
                   <p class="mt-4 text-sm text-text-muted">*Sujeto a disponibilidad y diferencias de tarifa</p>
                 </section>
 
-                <section class="rounded-2xl border border-blue-accent/20 bg-blue-50/60 p-6">
+                <section class="rounded-2xl border border-blue-accent/20 bg-red-50/60 p-6">
                   <h2 class="text-xl font-semibold text-blue-accent">Informacion Importante</h2>
                   <div class="mt-4 space-y-2 text-blue-accent">
                     <p>- Presentarse en el aeropuerto 3 horas antes de la salida</p>

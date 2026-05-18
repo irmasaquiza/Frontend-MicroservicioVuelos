@@ -213,7 +213,7 @@ onMounted(cargarTodo)
     <div class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-[2rem] font-bold text-navy">Gestion de Ciudades</h1>
-        <p class="mt-1.5 text-sm text-text-muted">Administra las ciudades con servicio de MPAS Airways (Solo ADMIN).</p>
+        <p class="mt-1.5 text-sm text-text-muted">Administra las ciudades con servicio de NachoFlights (Solo ADMIN).</p>
       </div>
 
       <button

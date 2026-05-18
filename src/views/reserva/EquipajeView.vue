@@ -101,43 +101,45 @@ onMounted(() => {
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="grid gap-8 lg:grid-cols-[1.35fr_0.8fr]">
           <div class="space-y-6">
-            <div class="rounded-[28px] bg-white p-8 shadow-sm">
-              <p class="text-sm font-semibold uppercase tracking-[0.28em] text-gold-dark">Paso 4</p>
-              <h1 class="mt-3 text-3xl font-bold text-navy">Equipaje</h1>
-              <p class="mt-4 text-text-muted">
-                MPAS Airways permite agregar 1 equipaje de bodega extra por pasajero, con un peso maximo de 23 kg y un costo fijo de $45.
+            <div class="overflow-hidden rounded-[32px] bg-white shadow-sm">
+              <div class="bg-gradient-to-r from-[#d71920] to-[#9f1117] px-8 py-7 text-white">
+                <p class="text-sm font-semibold uppercase tracking-[0.28em] text-white/70">Paso 4</p>
+                <h1 class="mt-3 text-3xl font-extrabold">Equipaje a la ecuatoriana</h1>
+              </div>
+              <p class="px-8 py-5 text-text-muted">
+                NachoFlights permite agregar 1 equipaje de bodega extra por pasajero, con un peso maximo de 23 kg y un costo fijo de $45. Pilas con la maleta.
               </p>
             </div>
 
             <article
               v-for="item in itemsEquipaje"
               :key="item.pasajeroIndex"
-              class="rounded-[28px] bg-white p-6 shadow-sm sm:p-8"
+              class="overflow-hidden rounded-[30px] border border-red-100 bg-white shadow-sm"
             >
-              <div class="flex flex-col gap-2 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
+              <div class="flex flex-col gap-2 border-b border-red-100 bg-red-50/70 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 class="text-2xl font-semibold text-navy">{{ item.nombre }}</h2>
                   <p class="mt-1 text-sm text-text-muted">Asiento seleccionado: {{ item.numeroAsiento }}</p>
                 </div>
-                <span class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">
+                <span class="rounded-full bg-white px-3 py-1 text-sm font-medium text-[#d71920]">
                   Pasajero {{ item.pasajeroIndex + 1 }}
                 </span>
               </div>
 
-              <div class="mt-6 space-y-4">
-                <div class="flex flex-col gap-4 rounded-[24px] border border-emerald-200 bg-emerald-50/60 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div class="space-y-4 p-6 sm:p-8">
+                <div class="flex flex-col gap-4 rounded-[24px] border border-red-100 bg-red-50/60 p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p class="text-xl font-semibold text-navy">Equipaje de Mano</p>
                     <p class="mt-1 text-sm text-text-muted">Maximo 10kg por pasajero.</p>
-                    <p class="mt-2 text-sm font-medium text-emerald-600">Siempre incluido en tu tarifa</p>
+                    <p class="mt-2 text-sm font-medium text-[#d71920]">Siempre incluido en tu tarifa</p>
                   </div>
                   <div class="text-right">
                     <p class="text-sm text-text-muted">Costo</p>
-                    <p class="text-lg font-semibold text-emerald-600">Incluido</p>
+                    <p class="text-lg font-semibold text-[#d71920]">Incluido</p>
                   </div>
                 </div>
 
-                <div class="rounded-[24px] border border-slate-200 p-5">
+                <div class="rounded-[24px] border border-red-100 p-5">
                   <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p class="text-xl font-semibold text-navy">Equipaje de Bodega</p>
@@ -155,7 +157,7 @@ onMounted(() => {
                       class="rounded-2xl border px-4 py-3 font-semibold transition-colors"
                       :class="
                         !item.equipajeBodega
-                          ? 'border-navy bg-navy text-white'
+                          ? 'border-[#111827] bg-[#111827] text-white'
                           : 'border-slate-200 bg-slate-50 text-navy hover:bg-slate-100'
                       "
                       @click="setBodega(item.pasajeroIndex, false)"
@@ -168,7 +170,7 @@ onMounted(() => {
                       class="rounded-2xl border px-4 py-3 font-semibold transition-colors"
                       :class="
                         item.equipajeBodega
-                          ? 'border-gold bg-gold text-navy'
+                          ? 'border-gold bg-gold text-white'
                           : 'border-slate-200 bg-slate-50 text-navy hover:bg-slate-100'
                       "
                       @click="setBodega(item.pasajeroIndex, true)"
@@ -180,9 +182,9 @@ onMounted(() => {
               </div>
             </article>
 
-            <section class="rounded-[28px] border border-blue-accent/20 bg-blue-50/60 p-6">
-              <h2 class="text-xl font-semibold text-blue-accent">Informacion de Equipaje</h2>
-              <div class="mt-4 space-y-2 text-sm text-blue-accent">
+            <section class="rounded-[28px] border border-red-100 bg-red-50/60 p-6">
+              <h2 class="text-xl font-semibold text-[#d71920]">Informacion de Equipaje</h2>
+              <div class="mt-4 space-y-2 text-sm text-[#d71920]">
                 <p>- El equipaje de mano (10kg) esta siempre incluido.</p>
                 <p>- El equipaje de bodega (23kg) tiene un costo adicional de {{ moneda(COSTO_BODEGA) }}.</p>
                 <p>- Solo se permite 1 maleta de bodega extra por pasajero.</p>
@@ -192,12 +194,12 @@ onMounted(() => {
           </div>
 
           <aside class="lg:sticky lg:top-24 lg:self-start">
-            <div class="rounded-[28px] bg-white p-8 shadow-sm">
+            <div class="rounded-[30px] border border-red-100 bg-white p-8 shadow-sm">
               <h2 class="text-2xl font-bold text-navy">Resumen de Equipaje</h2>
               <div class="mt-6 space-y-4 text-text-muted">
                 <div class="flex items-center justify-between">
                   <span>Equipaje de mano (10kg)</span>
-                  <span class="font-semibold text-emerald-600">Incluido</span>
+                  <span class="font-semibold text-[#d71920]">Incluido</span>
                 </div>
 
                 <div
@@ -216,13 +218,13 @@ onMounted(() => {
               <div class="mt-6 border-t border-slate-200 pt-6">
                 <div class="flex items-center justify-between">
                   <span class="text-2xl font-semibold text-navy">Costo adicional</span>
-                  <span class="text-4xl font-light text-navy">{{ moneda(totalExtra) }}</span>
+                  <span class="text-4xl font-extrabold text-[#d71920]">{{ moneda(totalExtra) }}</span>
                 </div>
               </div>
 
               <button
                 type="button"
-                class="mt-8 w-full rounded-2xl bg-gold px-6 py-4 font-semibold text-navy transition-colors hover:bg-gold-light"
+                class="mt-8 w-full rounded-2xl bg-gold px-6 py-4 font-semibold text-white transition-colors hover:bg-gold-light"
                 @click="continuarPago"
               >
                 Continuar

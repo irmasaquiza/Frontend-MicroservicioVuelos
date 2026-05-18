@@ -1,7 +1,6 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { IMAGENES } from '@/config/imagenes'
 import { useAutenticacionStore } from '@/stores/autenticacion.store'
 
 const auth = useAutenticacionStore()
@@ -33,23 +32,24 @@ async function cerrarSesion() {
   <nav class="sticky top-0 z-40 bg-navy shadow-lg">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="flex h-16 items-center justify-between">
-        <RouterLink to="/" class="flex-shrink-0" @click="cerrar">
-          <img :src="IMAGENES.logoPrincipal" alt="MPAS Airways" class="h-9 object-contain" />
+        <RouterLink to="/" class="flex items-center gap-2 text-xl font-extrabold tracking-tight" @click="cerrar">
+          <span class="rounded-xl bg-white px-3 py-1 text-[#d71920]">Nacho</span>
+          <span class="text-white">Flights</span>
         </RouterLink>
 
         <div class="hidden items-center gap-10 md:flex">
           <RouterLink
             to="/"
             class="text-sm font-medium text-white/85 transition-colors hover:text-white"
-            active-class="!text-gold"
-            exact-active-class="!text-gold"
+            active-class="!text-white"
+            exact-active-class="!text-white"
           >
             Inicio
           </RouterLink>
           <RouterLink
             to="/vuelos"
             class="text-sm font-medium text-white/85 transition-colors hover:text-white"
-            active-class="!text-gold"
+            active-class="!text-white"
           >
             Vuelos
           </RouterLink>
@@ -68,7 +68,8 @@ async function cerrarSesion() {
               <span v-else>Cerrar sesión</span>
             </button>
             <button
-              class="rounded-2xl bg-gold px-7 py-3 text-sm font-semibold text-navy transition-colors hover:bg-gold-light"
+              type="button"
+              class="rounded-2xl border-2 border-white bg-white px-7 py-3 text-sm font-bold text-[#d71920] shadow-md shadow-black/15 transition-colors hover:bg-red-50"
               @click="irMiCuenta"
             >
               Mi cuenta
@@ -77,7 +78,7 @@ async function cerrarSesion() {
           <template v-else>
             <RouterLink
               to="/login"
-              class="rounded-2xl bg-gold px-7 py-3 text-sm font-semibold text-navy transition-colors hover:bg-gold-light"
+              class="rounded-2xl border-2 border-white bg-white px-7 py-3 text-sm font-bold text-[#d71920] shadow-md shadow-black/15 transition-colors hover:bg-red-50"
             >
               Iniciar Sesión
             </RouterLink>
@@ -127,7 +128,8 @@ async function cerrarSesion() {
               <span v-else>Cerrar sesión</span>
             </button>
             <button
-              class="w-full rounded-xl bg-gold py-2.5 text-center text-sm font-semibold text-navy"
+              type="button"
+              class="w-full rounded-xl border-2 border-white bg-white py-2.5 text-center text-sm font-bold text-[#d71920] shadow-sm transition-colors hover:bg-red-50"
               @click="irMiCuenta"
             >
               Mi cuenta
@@ -136,7 +138,7 @@ async function cerrarSesion() {
           <RouterLink
             v-else
             to="/login"
-            class="block rounded-xl bg-gold py-2.5 text-center text-sm font-semibold text-navy"
+            class="block rounded-xl border-2 border-white bg-white py-2.5 text-center text-sm font-bold text-[#d71920] transition-colors hover:bg-red-50"
             @click="cerrar"
           >
             Iniciar Sesión

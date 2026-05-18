@@ -12,6 +12,14 @@ import { getClientesApi } from '@/api/clientes.api'
 import { getPaisesApi } from '@/api/paises.api'
 import { usePanelPermisos } from '@/composables/usePanelPermisos'
 import { deepValue, extractItems } from '@/utils/portalCliente'
+import {
+  esTipoDocumentoSoloDigitos,
+  limiteDocumento,
+  normalizarDocumento,
+  normalizarTelefono,
+  validarDocumentoPorTipo,
+  validarTelefono,
+} from '@/utils/validacionesCampos'
 
 const TIPOS_DOCUMENTO = ['CEDULA', 'PASAPORTE', 'RUC', 'OTRO']
 const GENEROS = ['MASCULINO', 'FEMENINO', 'OTRO']
@@ -267,12 +275,18 @@ function validar() {
     nuevosErrores.tipo_documento_pasajero = 'Selecciona el tipo de documento.'
   else if (!['CEDULA', 'PASAPORTE', 'RUC', 'OTRO'].includes(tipoDoc))
     nuevosErrores.tipo_documento_pasajero = 'Tipo de documento no válido.'
-  if (!String(form.value.numero_documento_pasajero || '').trim())
-    nuevosErrores.numero_documento_pasajero = 'Ingresa el número de documento.'
+  {
+    const errorDocumento = validarDocumentoPorTipo(tipoDoc, form.value.numero_documento_pasajero)
+    if (errorDocumento) nuevosErrores.numero_documento_pasajero = errorDocumento
+  }
   if (!String(form.value.id_pais_nacionalidad || '').trim())
     nuevosErrores.id_pais_nacionalidad = 'Selecciona la nacionalidad.'
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     nuevosErrores.email_contacto_pasajero = 'Ingresa un email válido.'
+  if (form.value.telefono_contacto_pasajero) {
+    const errorTelefono = validarTelefono(form.value.telefono_contacto_pasajero)
+    if (errorTelefono) nuevosErrores.telefono_contacto_pasajero = errorTelefono
+  }
   if (genero && !GENEROS_VALIDOS.includes(genero))
     nuevosErrores.genero_pasajero = 'Género no válido.'
   if (fechaNac) {
@@ -419,6 +433,22 @@ watch(
 watch(
   () => form.value.apellido_pasajero,
   (valor) => { form.value.apellido_pasajero = capitalizarTexto(valor) },
+)
+
+watch(
+  [() => form.value.tipo_documento_pasajero, () => form.value.numero_documento_pasajero],
+  () => {
+    const normalizado = normalizarDocumento(form.value.tipo_documento_pasajero, form.value.numero_documento_pasajero)
+    if (form.value.numero_documento_pasajero !== normalizado) form.value.numero_documento_pasajero = normalizado
+  },
+)
+
+watch(
+  () => form.value.telefono_contacto_pasajero,
+  (valor) => {
+    const normalizado = normalizarTelefono(valor)
+    if (form.value.telefono_contacto_pasajero !== normalizado) form.value.telefono_contacto_pasajero = normalizado
+  },
 )
 
 watch(form, () => { if (yaValidado.value) validar() }, { deep: true })
@@ -721,6 +751,9 @@ onMounted(cargarPasajeros)
           <InputApp
             v-model="form.numero_documento_pasajero"
             label="Número de documento"
+            inputmode="numeric"
+            :maxlength="limiteDocumento(form.tipo_documento_pasajero)"
+            :filtro-solo-digitos="esTipoDocumentoSoloDigitos(form.tipo_documento_pasajero)"
             :error="errores.numero_documento_pasajero"
             requerido
           />
@@ -754,6 +787,11 @@ onMounted(cargarPasajeros)
           <InputApp
             v-model="form.telefono_contacto_pasajero"
             label="Teléfono de contacto"
+            tipo="tel"
+            inputmode="numeric"
+            maxlength="10"
+            filtro-solo-digitos
+            :error="errores.telefono_contacto_pasajero"
           />
 
           <!-- Cliente asociado (ocupa fila completa) -->

@@ -8,6 +8,14 @@ import { useAutenticacionStore } from '@/stores/autenticacion.store'
 import { useCatalogosStore } from '@/stores/catalogos.store'
 import { useClienteStore } from '@/stores/cliente.store'
 import { cleanLabel, deepValue, resolveClienteId } from '@/utils/portalCliente'
+import {
+  esTipoDocumentoSoloDigitos,
+  limiteDocumento,
+  normalizarDocumento,
+  normalizarTelefono,
+  validarDocumentoPorTipo,
+  validarTelefono,
+} from '@/utils/validacionesCampos'
 
 const router = useRouter()
 const auth = useAutenticacionStore()
@@ -155,13 +163,19 @@ async function resolverPaisResidencia(cliente) {
 function validar() {
   const e = {}
   const correo = form.value.correo.trim()
+  const errorDocumento = validarDocumentoPorTipo(
+    form.value.tipo_identificacion,
+    form.value.numero_identificacion,
+    'identificacion',
+  )
+  const errorTelefono = validarTelefono(form.value.telefono)
 
   if (!form.value.tipo_identificacion) e.tipo_identificacion = 'Selecciona el tipo.'
-  if (!form.value.numero_identificacion.trim()) e.numero_identificacion = 'Ingresa la identificación.'
+  if (errorDocumento) e.numero_identificacion = errorDocumento
   if (!form.value.nombres.trim()) e.nombres = 'Ingresa los nombres.'
   if (!form.value.correo.trim()) e.correo = 'Ingresa el correo.'
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) e.correo = 'Ingresa un correo válido.'
-  if (!form.value.telefono.trim()) e.telefono = 'Ingresa el teléfono.'
+  if (errorTelefono) e.telefono = errorTelefono
   if (!form.value.direccion.trim()) e.direccion = 'Ingresa la dirección.'
   if (!form.value.id_pais_nacionalidad) e.id_pais_nacionalidad = 'Selecciona la nacionalidad.'
   if (!form.value.id_pais_residencia) e.id_pais_residencia = 'Selecciona el país.'
@@ -254,6 +268,22 @@ watch(
   },
 )
 
+watch(
+  [() => form.value.tipo_identificacion, () => form.value.numero_identificacion],
+  () => {
+    const normalizado = normalizarDocumento(form.value.tipo_identificacion, form.value.numero_identificacion)
+    if (form.value.numero_identificacion !== normalizado) form.value.numero_identificacion = normalizado
+  },
+)
+
+watch(
+  () => form.value.telefono,
+  (valor) => {
+    const normalizado = normalizarTelefono(valor)
+    if (form.value.telefono !== normalizado) form.value.telefono = normalizado
+  },
+)
+
 onMounted(cargarPerfil)
 </script>
 
@@ -295,7 +325,7 @@ onMounted(cargarPerfil)
 
         <div class="mt-8 rounded-[24px] bg-slate-50 px-6 py-5 text-left">
           <p class="text-sm uppercase tracking-[0.24em] text-gold-dark">Cuenta Cliente</p>
-          <p class="mt-3 text-lg font-semibold text-navy">{{ auth.usuario?.username || 'Cliente MPAS' }}</p>
+          <p class="mt-3 text-lg font-semibold text-navy">{{ auth.usuario?.username || 'Cliente NachoFlights' }}</p>
         </div>
       </aside>
 
@@ -335,11 +365,30 @@ onMounted(cargarPerfil)
 
         <div class="mt-8 grid gap-5 md:grid-cols-2">
           <SelectApp v-model="form.tipo_identificacion" label="Tipo de identificación" :opciones="opcionesTipoIdentificacion" :error="errores.tipo_identificacion" :deshabilitado="!editando" requerido />
-          <InputApp v-model="form.numero_identificacion" label="Número de identificación" :error="errores.numero_identificacion" :deshabilitado="!editando" requerido />
+          <InputApp
+            v-model="form.numero_identificacion"
+            label="Número de identificación"
+            inputmode="numeric"
+            :maxlength="limiteDocumento(form.tipo_identificacion)"
+            :filtro-solo-digitos="esTipoDocumentoSoloDigitos(form.tipo_identificacion)"
+            :error="errores.numero_identificacion"
+            :deshabilitado="!editando"
+            requerido
+          />
           <InputApp v-model="form.nombres" label="Nombres" :error="errores.nombres" :deshabilitado="!editando" requerido />
           <InputApp v-model="form.apellidos" label="Apellidos" :deshabilitado="!editando" />
           <InputApp v-model="form.correo" label="Email" tipo="email" :error="errores.correo" :deshabilitado="!editando" requerido />
-          <InputApp v-model="form.telefono" label="Teléfono" :error="errores.telefono" :deshabilitado="!editando" requerido />
+          <InputApp
+            v-model="form.telefono"
+            label="Teléfono"
+            tipo="tel"
+            inputmode="numeric"
+            maxlength="10"
+            filtro-solo-digitos
+            :error="errores.telefono"
+            :deshabilitado="!editando"
+            requerido
+          />
           <InputApp v-model="form.direccion" label="Dirección" :error="errores.direccion" :deshabilitado="!editando" requerido />
           <InputApp v-model="form.fecha_nacimiento" label="Fecha de nacimiento" tipo="date" :deshabilitado="!editando" />
           <SelectApp v-model="form.id_pais_nacionalidad" label="Nacionalidad" :opciones="opcionesPaises" placeholder="Seleccionar..." :error="errores.id_pais_nacionalidad" :cargando="catalogos.cargandoPaises" :deshabilitado="!editando" requerido />

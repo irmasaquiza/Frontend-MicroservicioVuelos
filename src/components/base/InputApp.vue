@@ -1,15 +1,42 @@
 <script setup>
-defineProps({
-  label:        { type: String,  default: '' },
-  modelValue:   { default: '' },
-  tipo:         { type: String,  default: 'text' },
-  placeholder:  { type: String,  default: '' },
-  error:        { type: String,  default: '' },
-  requerido:    { type: Boolean, default: false },
-  deshabilitado:{ type: Boolean, default: false },
-  autocomplete: { type: String,  default: 'off' },
+import { useAttrs } from 'vue'
+import { impedirSiNoEsDigito, soloDigitos as filtrarSoloDigitos } from '@/utils/validacionesCampos'
+
+defineOptions({ inheritAttrs: false })
+
+const props = defineProps({
+  label:           { type: String, default: '' },
+  modelValue:      { default: '' },
+  tipo:            { type: String, default: 'text' },
+  placeholder:     { type: String, default: '' },
+  error:           { type: String, default: '' },
+  requerido:       { type: Boolean, default: false },
+  deshabilitado:   { type: Boolean, default: false },
+  autocomplete:    { type: String, default: 'off' },
+  /** Quita cualquier caracter que no sea digito en cada input y respeta maxlength (attrs). */
+  filtroSoloDigitos:{ type: Boolean, default: false },
 })
-defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue'])
+const attrs = useAttrs()
+
+function alEscribir(evento) {
+  let valor = evento.target.value
+  if (props.filtroSoloDigitos) {
+    const ml = attrs.maxlength
+    const max =
+      ml !== undefined && ml !== null && String(ml).trim() !== ''
+        ? Number(ml)
+        : Infinity
+    const limite = Number.isFinite(max) ? max : Infinity
+    valor = filtrarSoloDigitos(valor, limite)
+    if (evento.target.value !== valor) evento.target.value = valor
+  }
+  emit('update:modelValue', valor)
+}
+
+function teclaNumerica(ev) {
+  if (props.filtroSoloDigitos) impedirSiNoEsDigito(ev)
+}
 </script>
 
 <template>
@@ -23,14 +50,16 @@ defineEmits(['update:modelValue'])
       :placeholder="placeholder"
       :disabled="deshabilitado"
       :autocomplete="autocomplete"
+      v-bind="attrs"
       :class="[
-        'w-full px-4 py-3 rounded-xl bg-gray-100 text-text-main placeholder-text-muted text-sm',
-        'border border-transparent focus:outline-none focus:border-blue-accent focus:ring-2 focus:ring-blue-accent/20',
+        'w-full px-4 py-3 rounded-xl bg-red-50/60 text-text-main placeholder-text-muted text-sm',
+        'border border-red-100 focus:outline-none focus:border-blue-accent focus:ring-2 focus:ring-blue-accent/20',
         'transition-all duration-200',
         error && '!border-error focus:!ring-error/20',
         deshabilitado && 'opacity-50 cursor-not-allowed',
       ]"
-      @input="$emit('update:modelValue', $event.target.value)"
+      @input="alEscribir"
+      @keydown="teclaNumerica"
     />
     <p v-if="error" class="text-xs text-error flex items-center gap-1">
       <svg class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">

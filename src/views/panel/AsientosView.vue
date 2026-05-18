@@ -179,7 +179,7 @@ function estadoAmigable(valor) {
 
 function badgeClase(clase) {
   if (clase === 'PRIMERA') return 'bg-amber-100 text-amber-800'
-  if (clase === 'EJECUTIVA') return 'bg-sky-100 text-sky-800'
+  if (clase === 'EJECUTIVA') return 'bg-red-100 text-red-800'
   return 'bg-slate-100 text-slate-700'
 }
 

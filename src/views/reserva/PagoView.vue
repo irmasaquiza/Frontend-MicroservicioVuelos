@@ -12,6 +12,14 @@ import { useAutenticacionStore } from '@/stores/autenticacion.store'
 import { useCatalogosStore } from '@/stores/catalogos.store'
 import { useReservaStore } from '@/stores/reserva.store'
 import { guardarPortalReserva } from '@/utils/portalCliente'
+import {
+  esTipoDocumentoSoloDigitos,
+  limiteDocumento,
+  normalizarDocumento,
+  normalizarTelefono,
+  validarDocumentoPorTipo,
+  validarTelefono,
+} from '@/utils/validacionesCampos'
 
 const router = useRouter()
 const auth = useAutenticacionStore()
@@ -208,6 +216,22 @@ watch(
   },
 )
 
+watch(
+  [() => registerForm.value.tipo_identificacion, () => registerForm.value.numero_identificacion],
+  () => {
+    const normalizado = normalizarDocumento(registerForm.value.tipo_identificacion, registerForm.value.numero_identificacion)
+    if (registerForm.value.numero_identificacion !== normalizado) registerForm.value.numero_identificacion = normalizado
+  },
+)
+
+watch(
+  () => registerForm.value.telefono,
+  (valor) => {
+    const normalizado = normalizarTelefono(valor)
+    if (registerForm.value.telefono !== normalizado) registerForm.value.telefono = normalizado
+  },
+)
+
 function abrirAutenticacion(tab = 'login') {
   tabAuth.value = tab
   mostrarModalAuth.value = true
@@ -317,16 +341,22 @@ function normalizarDetallesReserva(data) {
 function validarRegistro() {
   const e = {}
   const correo = registerForm.value.correo.trim()
+  const errorDocumento = validarDocumentoPorTipo(
+    registerForm.value.tipo_identificacion,
+    registerForm.value.numero_identificacion,
+    'identificacion',
+  )
+  const errorTelefono = validarTelefono(registerForm.value.telefono)
   const hoy = new Date()
   hoy.setHours(0, 0, 0, 0)
 
   if (!registerForm.value.tipo_identificacion) e.tipo_identificacion = 'Selecciona el tipo.'
-  if (!registerForm.value.numero_identificacion.trim()) e.numero_identificacion = 'Requerido.'
+  if (errorDocumento) e.numero_identificacion = errorDocumento
   if (!registerForm.value.nombres.trim()) e.nombres = 'Requerido.'
   if (!registerForm.value.apellidos.trim()) e.apellidos = 'Requerido.'
   if (!correo) e.correo = 'Requerido.'
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) e.correo = 'Correo invalido.'
-  if (!registerForm.value.telefono.trim()) e.telefono = 'Requerido.'
+  if (errorTelefono) e.telefono = errorTelefono
   if (!registerForm.value.direccion.trim()) e.direccion = 'Requerido.'
   if (!registerForm.value.id_pais_nacionalidad) e.id_pais_nacionalidad = 'Selecciona la nacionalidad.'
   if (!registerForm.value.id_pais_residencia) e.id_pais_residencia = 'Selecciona el pais.'
@@ -638,118 +668,173 @@ onMounted(async () => {
 
     <section class="min-h-[calc(100vh-64px)] bg-background py-10">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h1 class="text-3xl font-bold text-navy">Resumen y Pago</h1>
+        <div class="overflow-hidden rounded-[34px] bg-gradient-to-br from-[#d71920] via-[#c5161d] to-[#8f1116] p-6 text-white shadow-xl shadow-red-200/50 sm:p-8">
+          <div class="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
+            <div>
+              <p class="text-sm font-semibold uppercase tracking-[0.32em] text-white/70">Pasarela NachoFlights</p>
+              <h1 class="mt-3 text-4xl font-extrabold sm:text-5xl">Ya casi despegas, ñaño</h1>
+              <p class="mt-4 max-w-2xl text-lg leading-8 text-white/85">
+                Revisa tu ruta, confirma tus pasajeros y paga de una. Todo clarito, sin vueltas y con sabor ecuatoriano.
+              </p>
+            </div>
+
+            <div class="rounded-[28px] border border-white/20 bg-white p-6 text-navy shadow-2xl">
+              <p class="text-xs font-bold uppercase tracking-[0.2em] text-text-muted">Total listo para pagar</p>
+              <p class="mt-3 text-5xl font-extrabold text-[#d71920]">{{ moneda(totalPagar) }}</p>
+              <p class="mt-2 text-sm text-text-muted">Incluye tarifa, extras e IVA Ecuador 15%.</p>
+            </div>
+          </div>
+        </div>
 
         <div v-if="errorPago" class="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {{ errorPago }}
         </div>
 
-        <div v-if="estadoProceso" class="mt-6 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-accent">
+        <div v-if="estadoProceso" class="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-blue-accent">
           {{ estadoProceso }}
         </div>
 
-        <div class="mt-8 grid gap-8 lg:grid-cols-[1.35fr_0.7fr]">
-          <div class="space-y-6">
-            <section class="rounded-[28px] bg-white p-8 shadow-sm">
-              <h2 class="text-2xl font-semibold text-navy">Detalles del Vuelo</h2>
-              <div class="mt-6 grid gap-4 text-text-muted sm:grid-cols-[160px_1fr]">
-                <span>Vuelo:</span>
-                <span class="font-semibold text-navy">{{ vuelo.numeroVuelo }}</span>
-                <span>Ruta:</span>
-                <span class="font-semibold text-navy">{{ vuelo.codigoOrigen || '' }} - {{ vuelo.codigoDestino || '' }}</span>
-                <span>Fecha:</span>
-                <span class="font-semibold text-navy">{{ fechaLegible(vuelo.fechaHoraSalida) }}</span>
-                <span>Horario:</span>
-                <span class="font-semibold text-navy">
-                  {{ horaLegible(vuelo.fechaHoraSalida) }} - {{ horaLegible(vuelo.fechaHoraLlegada) }}
-                  ({{ duracionLegible(vuelo.duracionMin) }})
-                </span>
+        <div class="mt-8 grid gap-8 lg:grid-cols-[0.9fr_1.25fr]">
+          <aside class="space-y-6 lg:sticky lg:top-24 lg:self-start">
+            <section class="overflow-hidden rounded-[30px] bg-white shadow-sm">
+              <div class="bg-[#d71920] px-6 py-5 text-white">
+                <p class="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">Tu ruta chulla</p>
+                <h2 class="mt-2 text-3xl font-extrabold">{{ vuelo.codigoOrigen || 'Origen' }} → {{ vuelo.codigoDestino || 'Destino' }}</h2>
               </div>
-            </section>
-
-            <section class="rounded-[28px] bg-white p-8 shadow-sm">
-              <h2 class="text-2xl font-semibold text-navy">Pasajeros</h2>
-              <div class="mt-6 space-y-4">
-                <div
-                  v-for="item in itemsPago"
-                  :key="`pasajero-pago-${item.indice}`"
-                  class="rounded-2xl bg-slate-50 px-5 py-4"
-                >
-                  <p class="font-semibold text-navy">{{ item.nombre }}</p>
-                  <p class="mt-1 text-sm text-text-muted">
-                    {{ item.pasajero.tipo_documento_pasajero }}: {{ item.pasajero.numero_documento_pasajero }}
-                  </p>
-                  <p class="text-sm text-text-muted">{{ item.pasajero.email_contacto_pasajero }}</p>
-                  <p class="mt-2 text-sm font-medium text-navy">Asiento: {{ item.asiento?.numeroAsiento || 'Pendiente' }}</p>
+              <div class="space-y-5 p-6">
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="rounded-2xl bg-red-50 px-4 py-3">
+                    <p class="text-xs uppercase tracking-[0.16em] text-text-muted">Salida</p>
+                    <p class="mt-1 text-xl font-bold text-navy">{{ horaLegible(vuelo.fechaHoraSalida) }}</p>
+                  </div>
+                  <div class="rounded-2xl bg-red-50 px-4 py-3">
+                    <p class="text-xs uppercase tracking-[0.16em] text-text-muted">Llegada</p>
+                    <p class="mt-1 text-xl font-bold text-navy">{{ horaLegible(vuelo.fechaHoraLlegada) }}</p>
+                  </div>
+                </div>
+                <div class="rounded-2xl border border-red-100 px-4 py-3">
+                  <p class="text-sm text-text-muted">Vuelo</p>
+                  <p class="mt-1 font-semibold text-navy">{{ vuelo.numeroVuelo }} · {{ fechaLegible(vuelo.fechaHoraSalida) }}</p>
+                  <p class="mt-1 text-sm text-text-muted">Duracion: {{ duracionLegible(vuelo.duracionMin) }}</p>
+                </div>
+                <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm leading-6 text-text-muted">
+                  Pilas: revisa nombres, documentos y asientos antes de confirmar. Despues de pagar ya generamos la reserva real.
                 </div>
               </div>
             </section>
 
-            <section class="rounded-[28px] bg-white p-8 shadow-sm">
-              <h2 class="text-2xl font-semibold text-navy">Equipaje</h2>
-              <div class="mt-6 space-y-4">
-                <div
-                  v-for="item in itemsPago"
-                  :key="`equipaje-pago-${item.indice}`"
-                  class="grid gap-2 rounded-2xl bg-slate-50 px-5 py-4 sm:grid-cols-[1fr_auto]"
-                >
-                  <div>
-                    <p class="font-semibold text-navy">{{ item.nombre }}</p>
-                    <p class="mt-1 text-sm text-text-muted">Equipaje de mano (10kg)</p>
-                    <p v-if="item.equipaje?.equipajeBodega" class="text-sm text-text-muted">Equipaje de bodega (23kg)</p>
-                  </div>
-                  <div class="text-right">
-                    <p class="text-sm font-medium text-emerald-600">Incluido</p>
-                    <p v-if="item.equipaje?.equipajeBodega" class="mt-1 font-semibold text-navy">{{ moneda(COSTO_BODEGA) }}</p>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <aside class="lg:sticky lg:top-24 lg:self-start">
-            <div class="rounded-[28px] bg-white p-8 shadow-sm">
-              <h2 class="text-2xl font-semibold text-navy">Resumen de Precio</h2>
-              <div class="mt-6 space-y-4 text-text-muted">
-                <div class="flex items-center justify-between">
+            <section class="rounded-[30px] bg-white p-6 shadow-sm">
+              <h2 class="text-2xl font-extrabold text-navy">Cuenta clarita</h2>
+              <div class="mt-5 space-y-3 text-sm text-text-muted">
+                <div class="flex items-center justify-between rounded-2xl bg-red-50 px-4 py-3">
                   <span>Tarifa del vuelo</span>
-                  <span>{{ moneda(subtotalVuelo) }}</span>
+                  <span class="font-semibold text-navy">{{ moneda(subtotalVuelo) }}</span>
                 </div>
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between rounded-2xl bg-red-50 px-4 py-3">
                   <span>Equipaje de bodega</span>
-                  <span>{{ moneda(totalBodega) }}</span>
+                  <span class="font-semibold text-navy">{{ moneda(totalBodega) }}</span>
                 </div>
-                <div class="flex items-center justify-between border-t border-slate-200 pt-4">
-                  <span>Subtotal</span>
-                  <span>{{ moneda(subtotalGeneral) }}</span>
+                <div class="flex items-center justify-between rounded-2xl bg-white px-4 py-3 ring-1 ring-red-100">
+                  <span>IVA Ecuador (15%)</span>
+                  <span class="font-semibold text-navy">{{ moneda(ivaGeneral) }}</span>
                 </div>
-                <div class="flex items-center justify-between">
-                  <span>IVA (15%)</span>
-                  <span>{{ moneda(ivaGeneral) }}</span>
-                </div>
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between rounded-2xl bg-white px-4 py-3 ring-1 ring-red-100">
                   <span>Cargo por servicio</span>
-                  <span>{{ moneda(CARGO_SERVICIO) }}</span>
+                  <span class="font-semibold text-navy">{{ moneda(CARGO_SERVICIO) }}</span>
                 </div>
               </div>
 
-              <div class="mt-6 border-t border-slate-200 pt-6">
-                <div class="flex items-center justify-between">
-                  <span class="text-2xl font-semibold text-navy">Total a pagar</span>
-                  <span class="text-4xl font-light text-navy">{{ moneda(totalPagar) }}</span>
+              <div class="mt-5 rounded-[26px] bg-[#111827] px-5 py-5 text-white">
+                <div class="flex items-end justify-between gap-4">
+                  <div>
+                    <p class="text-xs uppercase tracking-[0.18em] text-white/60">Total final</p>
+                    <p class="mt-2 text-4xl font-extrabold">{{ moneda(totalPagar) }}</p>
+                  </div>
+                  <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold">De una</span>
                 </div>
               </div>
 
               <button
                 type="button"
-                class="mt-8 w-full rounded-2xl bg-gold px-6 py-4 font-semibold text-navy transition-colors hover:bg-gold-light disabled:cursor-not-allowed disabled:bg-gold/50"
+                class="mt-6 w-full rounded-2xl bg-gold px-6 py-4 font-bold text-white shadow-lg shadow-red-100 transition-colors hover:bg-gold-light disabled:cursor-not-allowed disabled:bg-gold/50"
                 :disabled="procesandoPago"
                 @click="handlePagar"
               >
-                Confirmar reserva
+                {{ procesandoPago ? 'Procesando...' : 'Confirmar reserva y despegar' }}
               </button>
-            </div>
+            </section>
           </aside>
+
+          <div class="space-y-6">
+            <section class="rounded-[30px] bg-white p-6 shadow-sm sm:p-8">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p class="text-sm font-semibold uppercase tracking-[0.26em] text-gold-dark">Pases de abordaje</p>
+                  <h2 class="mt-2 text-3xl font-extrabold text-navy">Pasajeros listos</h2>
+                </div>
+                <p class="rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-[#d71920]">
+                  {{ pasajeros.length }} viajero{{ pasajeros.length === 1 ? '' : 's' }}
+                </p>
+              </div>
+
+              <div class="mt-6 grid gap-4 xl:grid-cols-2">
+                <article
+                  v-for="item in itemsPago"
+                  :key="`pasajero-pago-${item.indice}`"
+                  class="overflow-hidden rounded-[26px] border border-red-100 bg-white shadow-sm"
+                >
+                  <div class="flex items-center justify-between gap-4 bg-red-50 px-5 py-4">
+                    <div>
+                      <p class="text-xs font-bold uppercase tracking-[0.18em] text-text-muted">Pasajero {{ item.indice + 1 }}</p>
+                      <h3 class="mt-1 text-xl font-extrabold text-navy">{{ item.nombre }}</h3>
+                    </div>
+                    <div class="rounded-2xl bg-[#d71920] px-4 py-3 text-center text-white">
+                      <p class="text-xs text-white/70">Asiento</p>
+                      <p class="text-2xl font-extrabold">{{ item.asiento?.numeroAsiento || '--' }}</p>
+                    </div>
+                  </div>
+                  <div class="grid gap-3 p-5 text-sm text-text-muted sm:grid-cols-2">
+                    <div>
+                      <p class="text-xs uppercase tracking-[0.16em]">Documento</p>
+                      <p class="mt-1 font-semibold text-navy">{{ item.pasajero.tipo_documento_pasajero }} {{ item.pasajero.numero_documento_pasajero }}</p>
+                    </div>
+                    <div>
+                      <p class="text-xs uppercase tracking-[0.16em]">Contacto</p>
+                      <p class="mt-1 truncate font-semibold text-navy">{{ item.pasajero.email_contacto_pasajero }}</p>
+                    </div>
+                    <div>
+                      <p class="text-xs uppercase tracking-[0.16em]">Tarifa + asiento</p>
+                      <p class="mt-1 font-semibold text-navy">{{ moneda(item.subtotalLinea) }}</p>
+                    </div>
+                    <div>
+                      <p class="text-xs uppercase tracking-[0.16em]">Bodega</p>
+                      <p class="mt-1 font-semibold text-navy">
+                        {{ item.equipaje?.equipajeBodega ? moneda(COSTO_BODEGA) : 'No agregada' }}
+                      </p>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </section>
+
+            <section class="grid gap-5 md:grid-cols-3">
+              <div class="rounded-[28px] bg-white p-6 shadow-sm">
+                <p class="text-sm font-semibold uppercase tracking-[0.22em] text-gold-dark">Equipaje</p>
+                <p class="mt-3 text-2xl font-extrabold text-navy">Mano incluido</p>
+                <p class="mt-2 text-sm text-text-muted">10kg por pasajero. Para ir ligerito y sin relajo.</p>
+              </div>
+              <div class="rounded-[28px] bg-white p-6 shadow-sm">
+                <p class="text-sm font-semibold uppercase tracking-[0.22em] text-gold-dark">Bodega</p>
+                <p class="mt-3 text-2xl font-extrabold text-navy">{{ moneda(totalBodega) }}</p>
+                <p class="mt-2 text-sm text-text-muted">23kg adicional si lo escogiste en el paso anterior.</p>
+              </div>
+              <div class="rounded-[28px] bg-[#d71920] p-6 text-white shadow-sm">
+                <p class="text-sm font-semibold uppercase tracking-[0.22em] text-white/70">Encanto Ecuador</p>
+                <p class="mt-3 text-2xl font-extrabold">Pilas, todo listo</p>
+                <p class="mt-2 text-sm text-white/80">Confirmas y tu reserva queda generada al instante.</p>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     </section>
@@ -759,24 +844,26 @@ onMounted(async () => {
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-8"
       @click.self="cerrarAutenticacion"
     >
-      <div class="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl sm:p-8">
-        <div class="flex items-center justify-between gap-4">
+      <div class="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[32px] bg-white shadow-2xl">
+        <div class="flex items-start justify-between gap-4 bg-[#d71920] px-6 py-6 text-white sm:px-8">
           <div>
-            <h2 class="text-2xl font-bold text-navy">Autenticacion para completar la compra</h2>
-            <p class="mt-2 text-text-muted">
-              Tu compra aun vive solo en sessionStorage. Al autenticarte la convertiremos en pasajeros, reserva y pago reales.
+            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Ultimo paso</p>
+            <h2 class="mt-2 text-2xl font-bold">Identificate y dejamos tu reserva lista</h2>
+            <p class="mt-2 text-white/80">
+              Ingresa o crea tu cuenta para emitir la reserva. Pilas, toma menos de un minuto.
             </p>
           </div>
-          <button type="button" class="rounded-xl p-2 text-slate-500 hover:bg-slate-100" @click="cerrarAutenticacion">
+          <button type="button" class="rounded-xl p-2 text-white/80 hover:bg-white/10" @click="cerrarAutenticacion">
             ×
           </button>
         </div>
 
+        <div class="px-6 pb-6 sm:px-8">
         <div class="mt-6 flex gap-3">
           <button
             type="button"
             class="rounded-2xl px-4 py-2 font-semibold transition-colors"
-            :class="tabAuth === 'login' ? 'bg-navy text-white' : 'bg-slate-100 text-navy'"
+            :class="tabAuth === 'login' ? 'bg-gold text-white' : 'bg-red-50 text-navy'"
             @click="tabAuth = 'login'; limpiarModal()"
           >
             Iniciar sesion
@@ -784,7 +871,7 @@ onMounted(async () => {
           <button
             type="button"
             class="rounded-2xl px-4 py-2 font-semibold transition-colors"
-            :class="tabAuth === 'registro' ? 'bg-navy text-white' : 'bg-slate-100 text-navy'"
+            :class="tabAuth === 'registro' ? 'bg-gold text-white' : 'bg-red-50 text-navy'"
             @click="tabAuth = 'registro'; limpiarModal()"
           >
             Crear cuenta
@@ -815,11 +902,28 @@ onMounted(async () => {
             :error="erroresRegistro.tipo_identificacion"
             requerido
           />
-          <InputApp v-model="registerForm.numero_identificacion" label="Numero identificacion" :error="erroresRegistro.numero_identificacion" requerido />
+          <InputApp
+            v-model="registerForm.numero_identificacion"
+            label="Numero identificacion"
+            inputmode="numeric"
+            :maxlength="limiteDocumento(registerForm.tipo_identificacion)"
+            :filtro-solo-digitos="esTipoDocumentoSoloDigitos(registerForm.tipo_identificacion)"
+            :error="erroresRegistro.numero_identificacion"
+            requerido
+          />
           <InputApp v-model="registerForm.nombres" label="Nombres" :error="erroresRegistro.nombres" requerido />
           <InputApp v-model="registerForm.apellidos" label="Apellidos" :error="erroresRegistro.apellidos" requerido />
           <InputApp v-model="registerForm.correo" label="Correo" tipo="email" :error="erroresRegistro.correo" requerido />
-          <InputApp v-model="registerForm.telefono" label="Telefono" :error="erroresRegistro.telefono" requerido />
+          <InputApp
+            v-model="registerForm.telefono"
+            label="Telefono"
+            tipo="tel"
+            inputmode="numeric"
+            maxlength="10"
+            filtro-solo-digitos
+            :error="erroresRegistro.telefono"
+            requerido
+          />
           <div class="sm:col-span-2">
             <InputApp v-model="registerForm.direccion" label="Direccion" :error="erroresRegistro.direccion" requerido />
           </div>
@@ -866,17 +970,18 @@ onMounted(async () => {
           </div>
 
           <p class="sm:col-span-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-text-muted">
-            Los datos registrados se usaran para generar la factura de esta reserva.
+            Los datos registrados se usaran para generar la factura de esta reserva. Todo legalito, como debe ser.
           </p>
 
           <button
             type="submit"
-            class="sm:col-span-2 w-full rounded-2xl bg-gold px-6 py-4 font-semibold text-navy transition-colors hover:bg-gold-light disabled:cursor-not-allowed disabled:bg-gold/50"
+            class="sm:col-span-2 w-full rounded-2xl bg-gold px-6 py-4 font-semibold text-white transition-colors hover:bg-gold-light disabled:cursor-not-allowed disabled:bg-gold/50"
             :disabled="procesandoPago"
           >
             Crear cuenta y pagar
           </button>
         </form>
+        </div>
       </div>
     </div>
   </div>

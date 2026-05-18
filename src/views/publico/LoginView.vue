@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAutenticacionStore } from '@/stores/autenticacion.store'
 import { useReservaStore } from '@/stores/reserva.store'
-import { IMAGENES } from '@/config/imagenes'
 import InputApp from '@/components/base/InputApp.vue'
 import BotonApp from '@/components/base/BotonApp.vue'
 
@@ -69,12 +68,12 @@ async function handleLogin() {
   <div class="min-h-[calc(100vh-64px)] bg-background px-4 py-10">
     <div class="mx-auto max-w-md">
       <div class="mb-8 text-center">
-        <div class="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-full bg-gold shadow-lg">
-          <img :src="IMAGENES.logoPrincipal" alt="MPAS Airways" class="h-12 w-12 object-contain" />
+        <div class="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-gold text-3xl font-extrabold text-white shadow-lg">
+          NF
         </div>
         <h1 class="mt-6 text-[2.2rem] font-bold leading-tight">
-          <span class="text-navy">MPAS</span>
-          <span class="ml-2 text-gold-dark">Airways</span>
+          <span class="text-navy">Nacho</span>
+          <span class="ml-2 text-gold-dark">Flights</span>
         </h1>
         <p class="mt-3 text-lg text-text-muted">Inicia sesión en tu cuenta</p>
       </div>

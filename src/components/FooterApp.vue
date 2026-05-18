@@ -1,6 +1,4 @@
 <script setup>
-import { IMAGENES } from '@/config/imagenes'
-
 const enlacesCorporativos = [
   { etiqueta: 'Inicio', to: '/' },
   { etiqueta: 'Vuelos', to: '/vuelos' },
@@ -20,9 +18,12 @@ const redes = [
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
-          <img :src="IMAGENES.logoPrincipal" alt="MPAS Airways" class="mb-4 h-9 object-contain" />
+          <div class="mb-4 inline-flex items-center gap-2 text-2xl font-extrabold">
+            <span class="rounded-xl bg-white px-3 py-1 text-[#d71920]">Nacho</span>
+            <span>Flights</span>
+          </div>
           <p class="max-w-sm text-sm leading-6 text-white/70">
-            MPAS Airways conecta destinos con una experiencia de reserva elegante, clara y segura.
+            NachoFlights conecta destinos con una experiencia rápida, clara y segura. De una, a volar.
           </p>
         </div>
 
@@ -58,7 +59,7 @@ const redes = [
       </div>
 
       <div class="mt-10 border-t border-white/10 pt-5 text-center text-xs text-white/45">
-        © {{ new Date().getFullYear() }} MPAS Airways. Todos los derechos reservados.
+        © {{ new Date().getFullYear() }} NachoFlights. Todos los derechos reservados.
       </div>
     </div>
   </footer>

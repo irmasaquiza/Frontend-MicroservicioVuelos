@@ -322,11 +322,14 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="min-h-[calc(100vh-64px)] bg-background py-10">
+  <section class="min-h-[calc(100vh-64px)] bg-gradient-to-br from-white via-red-50 to-white py-10">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="rounded-[28px] bg-white p-6 shadow-sm sm:p-8">
-        <p class="text-sm font-semibold uppercase tracking-[0.28em] text-gold-dark">Vuelos</p>
-        <h1 class="mt-2 text-3xl font-bold text-navy">Vuelos Disponibles</h1>
+      <div class="overflow-hidden rounded-[30px] border border-red-100 bg-white shadow-xl shadow-red-100/50">
+        <div class="bg-[#d71920] px-6 py-5 text-white sm:px-8">
+          <p class="text-sm font-semibold uppercase tracking-[0.28em] text-white/75">Vuelos</p>
+          <h1 class="mt-2 text-3xl font-bold">Vuelos disponibles</h1>
+        </div>
+        <div class="p-6 sm:p-8">
         <div class="mt-4 flex flex-wrap gap-x-3 gap-y-2 text-sm text-text-muted">
           <span>{{ resumenBusqueda.origen }}</span>
           <span>-</span>
@@ -341,7 +344,7 @@ onMounted(async () => {
         >
           <select
             v-model="form.origen"
-            class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-text-main outline-none transition focus:border-blue-accent focus:ring-4 focus:ring-blue-accent/10"
+            class="rounded-2xl border border-red-100 bg-red-50/40 px-4 py-3 text-text-main outline-none transition focus:border-[#d71920] focus:ring-4 focus:ring-red-100"
           >
             <option value="">Origen</option>
             <option v-for="opcion in opcionesAeropuertos" :key="opcion.valor" :value="opcion.valor">
@@ -351,7 +354,7 @@ onMounted(async () => {
 
           <select
             v-model="form.destino"
-            class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-text-main outline-none transition focus:border-blue-accent focus:ring-4 focus:ring-blue-accent/10"
+            class="rounded-2xl border border-red-100 bg-red-50/40 px-4 py-3 text-text-main outline-none transition focus:border-[#d71920] focus:ring-4 focus:ring-red-100"
           >
             <option value="">Destino</option>
             <option v-for="opcion in opcionesAeropuertos" :key="opcion.valor" :value="opcion.valor">
@@ -362,21 +365,22 @@ onMounted(async () => {
           <input
             v-model="form.salida"
             type="date"
-            class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-text-main outline-none transition focus:border-blue-accent focus:ring-4 focus:ring-blue-accent/10"
+            class="rounded-2xl border border-red-100 bg-red-50/40 px-4 py-3 text-text-main outline-none transition focus:border-[#d71920] focus:ring-4 focus:ring-red-100"
           />
 
           <button
             type="submit"
-            class="w-full rounded-2xl bg-gold px-6 py-3 font-semibold text-navy transition-colors hover:bg-gold-light"
+            class="w-full rounded-2xl bg-[#d71920] px-6 py-3 font-semibold text-white shadow-lg shadow-red-200 transition-colors hover:bg-[#b9151b]"
           >
             Buscar
           </button>
         </form>
+        </div>
       </div>
 
       <div class="mt-10">
         <div v-if="cargando" class="rounded-[28px] bg-white p-10 text-center shadow-sm">
-          <div class="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-accent/20 border-t-blue-accent" />
+          <div class="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-red-100 border-t-[#d71920]" />
           <p class="mt-4 text-text-muted">Consultando vuelos disponibles...</p>
         </div>
 
@@ -385,7 +389,7 @@ onMounted(async () => {
         </div>
 
         <div v-else-if="!puedeBuscar && cargandoDestacados" class="rounded-[28px] bg-white p-10 text-center shadow-sm">
-          <div class="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-accent/20 border-t-blue-accent" />
+          <div class="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-red-100 border-t-[#d71920]" />
           <p class="mt-4 text-text-muted">Cargando vuelos destacados...</p>
         </div>
 
@@ -402,25 +406,25 @@ onMounted(async () => {
           <article
             v-for="vuelo in listaVisible"
             :key="vuelo.idVuelo"
-            class="overflow-hidden rounded-[28px] bg-white shadow-sm transition-shadow hover:shadow-md"
+            class="overflow-hidden rounded-[28px] border border-red-100 bg-white shadow-sm shadow-red-100/50 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-red-100"
           >
-            <div class="grid gap-5 px-6 py-5 lg:grid-cols-[240px_1fr_210px] lg:items-center">
+            <div class="grid gap-5 border-l-8 border-[#d71920] px-6 py-5 lg:grid-cols-[240px_1fr_210px] lg:items-center">
               <div class="space-y-6">
                 <div class="flex items-start gap-3">
-                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-navy text-white">
+                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#d71920] text-white">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 16l20-5-8 8-2.5-5.5L6 11l-4-1 20-5-5 20-3.5-7L2 16z" />
                     </svg>
                   </div>
                   <div class="min-w-0">
-                    <p class="text-lg font-semibold leading-tight text-navy">MPAS Airways</p>
+                    <p class="text-lg font-semibold leading-tight text-[#1f1f1f]">NachoFlights</p>
                     <p class="mt-1 text-sm text-text-muted">{{ vuelo.numeroVuelo }} - {{ vuelo.aeronave }}</p>
                   </div>
                 </div>
 
                 <div>
-                  <p class="text-[2.15rem] font-light leading-none text-navy">{{ horaLegible(vuelo.fechaHoraSalida) }}</p>
-                  <p class="mt-3 text-[1.3rem] font-semibold leading-none text-navy">{{ vuelo.codigoOrigen }}</p>
+                  <p class="text-[2.15rem] font-light leading-none text-[#1f1f1f]">{{ horaLegible(vuelo.fechaHoraSalida) }}</p>
+                  <p class="mt-3 text-[1.3rem] font-semibold leading-none text-[#d71920]">{{ vuelo.codigoOrigen }}</p>
                   <p class="mt-2 text-sm text-text-muted">{{ vuelo.ciudadOrigen }}</p>
                 </div>
               </div>
@@ -429,11 +433,11 @@ onMounted(async () => {
                 <div class="text-center">
                   <p class="text-sm text-text-muted">{{ duracionLegible(vuelo.duracionMin) }}</p>
                   <div class="mx-auto mt-4 flex max-w-[360px] items-center gap-3">
-                    <span class="h-px flex-1 bg-slate-300" />
-                    <svg class="h-5 w-5 text-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span class="h-px flex-1 bg-red-200" />
+                    <svg class="h-5 w-5 text-[#d71920]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 16l20-5-8 8-2.5-5.5L6 11l-4-1 20-5-5 20-3.5-7L2 16z" />
                     </svg>
-                    <span class="h-px flex-1 bg-slate-300" />
+                    <span class="h-px flex-1 bg-red-200" />
                   </div>
                   <p class="mt-4 text-sm font-medium text-emerald-600">
                     {{ vuelo.escalas === 0 ? 'Directo' : `${vuelo.escalas} escalas` }}
@@ -441,26 +445,26 @@ onMounted(async () => {
                 </div>
 
                 <div class="text-left md:text-right">
-                  <p class="text-[2.15rem] font-light leading-none text-navy">{{ horaLegible(vuelo.fechaHoraLlegada) }}</p>
-                  <p class="mt-3 text-[1.3rem] font-semibold leading-none text-navy">{{ vuelo.codigoDestino }}</p>
+                  <p class="text-[2.15rem] font-light leading-none text-[#1f1f1f]">{{ horaLegible(vuelo.fechaHoraLlegada) }}</p>
+                  <p class="mt-3 text-[1.3rem] font-semibold leading-none text-[#d71920]">{{ vuelo.codigoDestino }}</p>
                   <p class="mt-2 text-sm text-text-muted">{{ vuelo.ciudadDestino }}</p>
                 </div>
               </div>
 
-              <div class="border-l border-slate-200 pl-6">
+              <div class="border-l border-red-100 pl-6">
                 <p class="text-right text-sm text-text-muted">Desde</p>
-                <p class="text-right text-[2.85rem] font-light leading-none text-navy">{{ moneda(vuelo.precioBase) }}</p>
+                <p class="text-right text-[2.85rem] font-light leading-none text-[#d71920]">{{ moneda(vuelo.precioBase) }}</p>
                 <p class="mt-2 text-right text-sm text-text-muted">por persona</p>
                 <button
                   type="button"
-                  class="mt-5 w-full rounded-2xl bg-gold px-5 py-3 text-base font-semibold text-navy transition-colors hover:bg-gold-light"
+                  class="mt-5 w-full rounded-2xl bg-[#d71920] px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-[#b9151b]"
                   @click="reservar(vuelo)"
                 >
                   Reservar
                 </button>
                 <button
                   type="button"
-                  class="mt-4 flex w-full items-center justify-center gap-2 text-sm font-semibold text-blue-accent transition-colors hover:text-navy"
+                  class="mt-4 flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#d71920] transition-colors hover:text-[#8f1116]"
                   @click="toggleDetalles(vuelo.idVuelo)"
                 >
                   <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -481,7 +485,7 @@ onMounted(async () => {
             </div>
 
             <Transition name="expand">
-              <div v-if="vueloExpandido === vuelo.idVuelo" class="border-t border-slate-200 bg-slate-50/90 px-6 py-8 lg:px-8">
+              <div v-if="vueloExpandido === vuelo.idVuelo" class="border-t border-red-100 bg-red-50/50 px-6 py-8 lg:px-8">
                 <div class="grid gap-8 md:grid-cols-3">
                   <div>
                     <h3 class="text-2xl font-semibold text-navy">Servicios Incluidos</h3>
