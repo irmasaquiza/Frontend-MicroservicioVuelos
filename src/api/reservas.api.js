@@ -6,8 +6,8 @@ export const getReservasApi = (params = {}) =>
 export const getReservaApi = (idReserva) =>
   apiClient.get(`/reservas/${idReserva}`)
 
-export const createReservaApi = (payload) =>
-  apiClient.post('/reservas', payload)
+export const createReservaApi = (payload, axiosConfig = {}) =>
+  apiClient.post('/reservas', payload, axiosConfig)
 
 export const getClienteReservasApi = () =>
   apiClient.get('/portal/cliente/reservas')
@@ -21,8 +21,8 @@ export const getClienteReservaDetalleApi = (idReserva) =>
 export const getClienteReservaPorCodigoApi = (codigo) =>
   apiClient.get(`/portal/cliente/reservas/by-codigo/${codigo}`)
 
-export const pagarReservaApi = (idReserva, payload) =>
-  apiClient.patch(`/reservas/${idReserva}/pagar`, payload)
+export const pagarReservaApi = (idReserva, payload, axiosConfig = {}) =>
+  apiClient.patch(`/reservas/${idReserva}/pagar`, payload, axiosConfig)
 
 export const cambiarEstadoReservaApi = (idReserva, payload) =>
   apiClient.patch(`/reservas/${idReserva}/cancelar`, {

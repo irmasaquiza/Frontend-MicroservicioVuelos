@@ -64,6 +64,12 @@ const router = createRouter({
           component: () => import('@/views/reserva/ConfirmacionView.vue'),
         },
         {
+          path: 'aerolinea',
+          name: 'aerolinea-checkout',
+          meta: { requiresAuth: true, roles: ['CLIENTE'] },
+          component: () => import('@/views/publico/AerolineaCheckoutView.vue'),
+        },
+        {
           path: 'no-autorizado',
           name: 'no-autorizado',
           component: () => import('@/views/publico/NoAutorizadoView.vue'),

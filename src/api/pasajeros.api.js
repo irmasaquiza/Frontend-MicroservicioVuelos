@@ -26,8 +26,8 @@ export const getPasajerosApi = (params = {}) =>
 export const getPasajeroApi = (idPasajero) =>
   apiClient.get(`/pasajeros/${idPasajero}`)
 
-export const createPasajeroApi = (payload) =>
-  apiClient.post('/pasajeros', payload)
+export const createPasajeroApi = (payload, axiosConfig = {}) =>
+  apiClient.post('/pasajeros', payload, axiosConfig)
 
 export const updatePasajeroApi = (idPasajero, payload) =>
   apiClient.put(`/pasajeros/${idPasajero}`, payload)

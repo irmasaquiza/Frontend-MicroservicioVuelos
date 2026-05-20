@@ -70,6 +70,10 @@ export const getEscalasVueloBookingApi = (idVuelo) =>
 export const getAsientosVueloBookingApi = (idVuelo) =>
   apiClient.get(`/booking/vuelos/${validarIdPositivo('El id del vuelo', idVuelo)}/asientos`)
 
+/**
+ * Crea JWT de sesión para redirección al checkout público (?token=).
+ * Body: `{ idVuelo, urlRetorno }` — ya no envía selección de asientos.
+ */
 export const crearSesionRedirectVueloApi = (payload) =>
   apiClient.post('/booking/vuelos/sesion-redirect', payload)
 

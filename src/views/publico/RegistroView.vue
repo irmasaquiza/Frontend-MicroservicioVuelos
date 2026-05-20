@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAutenticacionStore } from '@/stores/autenticacion.store'
 import { useReservaStore } from '@/stores/reserva.store'
 import { registerClienteApi } from '@/api/autenticacion.api'
@@ -8,6 +8,7 @@ import { useCatalogosStore } from '@/stores/catalogos.store'
 import InputApp from '@/components/base/InputApp.vue'
 import SelectApp from '@/components/base/SelectApp.vue'
 import BotonApp from '@/components/base/BotonApp.vue'
+import { redirectClientePublicoSeguro } from '@/utils/redirectClientePublico'
 import {
   esTipoDocumentoSoloDigitos,
   limiteDocumento,
@@ -18,6 +19,7 @@ import {
 } from '@/utils/validacionesCampos'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAutenticacionStore()
 const reserva = useReservaStore()
 const catalogos = useCatalogosStore()
@@ -117,6 +119,29 @@ const errores = ref({})
 const errorGeneral = ref('')
 const cargando = ref(false)
 
+const enlaceLogin = computed(() => {
+  const r = redirectClientePublicoSeguro(
+    typeof route.query.redirect === 'string' ? route.query.redirect : '',
+  )
+  return r ? { path: '/login', query: { redirect: r } } : '/login'
+})
+
+function siguienteDespuesDeRegistro() {
+  const destino = redirectClientePublicoSeguro(
+    typeof route.query.redirect === 'string' ? route.query.redirect : '',
+  )
+  if (destino) return router.push(destino)
+
+  if (reserva.tienePendiente) {
+    try {
+      return router.push({ name: 'pago-reserva' })
+    } catch {
+      return router.push('/cliente')
+    }
+  }
+  return router.push('/cliente')
+}
+
 function validarPassword(p) {
   if (p.length < 8) return 'Mínimo 8 caracteres.'
   if (!/[A-Z]/.test(p)) return 'Debe incluir al menos una mayúscula.'
@@ -190,16 +215,7 @@ async function handleRegistro() {
 
     await registerClienteApi(payload)
     await auth.login({ username: payload.username, password: payload.password }, true)
-
-    if (reserva.tienePendiente) {
-      try {
-        await router.push({ name: 'checkout-pago' })
-      } catch {
-        router.push('/cliente')
-      }
-    } else {
-      router.push('/cliente')
-    }
+    await siguienteDespuesDeRegistro()
   } catch (error) {
     const status = error.response?.status
     const msg = error.response?.data?.message
@@ -426,7 +442,7 @@ async function handleRegistro() {
 
         <p class="mt-8 text-center text-sm text-text-muted">
           ¿Ya tienes cuenta?
-          <RouterLink to="/login" class="font-semibold text-navy hover:underline">
+          <RouterLink :to="enlaceLogin" class="font-semibold text-navy hover:underline">
             Inicia sesión
           </RouterLink>
         </p>

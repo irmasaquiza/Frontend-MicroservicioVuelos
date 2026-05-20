@@ -1,8 +1,9 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAutenticacionStore } from '@/stores/autenticacion.store'
 import { useReservaStore } from '@/stores/reserva.store'
+import { redirectClientePublicoSeguro } from '@/utils/redirectClientePublico'
 import InputApp from '@/components/base/InputApp.vue'
 import BotonApp from '@/components/base/BotonApp.vue'
 
@@ -15,6 +16,30 @@ const form = ref({ username: '', password: '' })
 const errores = ref({})
 const errorGeneral = ref('')
 const cargando = ref(false)
+
+const enlaceRegistro = computed(() => {
+  const r = redirectClientePublicoSeguro(
+    typeof route.query.redirect === 'string' ? route.query.redirect : '',
+  )
+  return r ? { path: '/registro', query: { redirect: r } } : '/registro'
+})
+
+function siguienteTrasSesionCliente() {
+  const destino = redirectClientePublicoSeguro(
+    typeof route.query.redirect === 'string' ? route.query.redirect : '',
+  )
+  if (destino) return router.push(destino)
+
+  if (auth.esCliente && reserva.tienePendiente) {
+    try {
+      return router.push({ name: 'pago-reserva' })
+    } catch {
+      return router.push('/cliente')
+    }
+  }
+  if (auth.esCliente) return router.push('/cliente')
+  return router.push('/panel')
+}
 
 function validar() {
   const e = {}
@@ -34,20 +59,7 @@ async function handleLogin() {
       true,
     )
 
-    const redirect = route.query.redirect
-    if (redirect) {
-      router.push(redirect)
-    } else if (auth.esCliente && reserva.tienePendiente) {
-      try {
-        await router.push({ name: 'checkout-pago' })
-      } catch {
-        router.push('/cliente')
-      }
-    } else if (auth.esCliente) {
-      router.push('/cliente')
-    } else {
-      router.push('/panel')
-    }
+    await siguienteTrasSesionCliente()
   } catch (error) {
     const status = error.response?.status
     const msg = error.response?.data?.message
@@ -126,7 +138,7 @@ async function handleLogin() {
         <div class="mt-8 border-t border-slate-200 pt-8 text-center">
           <p class="text-sm text-text-muted">
             ¿No tienes cuenta?
-            <RouterLink to="/registro" class="font-semibold text-navy hover:underline">
+            <RouterLink :to="enlaceRegistro" class="font-semibold text-navy hover:underline">
               Regístrate aquí
             </RouterLink>
           </p>

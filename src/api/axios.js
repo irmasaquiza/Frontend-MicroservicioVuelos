@@ -88,10 +88,12 @@ apiClient.interceptors.response.use(
       }))
     }
 
-    if (status === 401) {
+    const omitirRedireccionAuth = error.config?.skipAuthRedirect === true
+
+    if (status === 401 && !omitirRedireccionAuth) {
       limpiarSesion()
       window.location.href = '/login'
-    } else if (status === 403) {
+    } else if (status === 403 && !omitirRedireccionAuth) {
       window.location.href = '/no-autorizado'
     }
 

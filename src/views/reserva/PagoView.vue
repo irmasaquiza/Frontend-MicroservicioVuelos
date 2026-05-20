@@ -554,37 +554,32 @@ async function ejecutarCompraReal() {
     const detalles = normalizarDetallesReserva(reservaResp.data?.data || reservaResp.data)
 
     estadoProceso.value = 'Procesando pago...'
+    /** Contrato PATCH /pagar: camelCase; solo registra líneas BODEGA cuando hay maleta extra */
     const equipajePayload = []
 
     for (const item of itemsPago.value) {
       const pasajeroCreado = pasajerosCreados[item.indice]
-      const detalle = detalles.find(
-        (d) =>
-          String(d.idPasajero) === String(pasajeroCreado?.idPasajero) &&
-          String(d.idAsiento) === String(item.asiento?.idAsiento),
-      ) || detalles[item.indice]
+      const detalle =
+        detalles.find(
+          (d) =>
+            String(d.idPasajero) === String(pasajeroCreado?.idPasajero) &&
+            String(d.idAsiento) === String(item.asiento?.idAsiento),
+        ) || detalles[item.indice]
 
       if (!detalle?.idDetalle) throw new Error('No se pudo asociar el id_detalle para el equipaje.')
 
-      equipajePayload.push({
-        id_detalle: detalle.idDetalle,
-        tipo: 'MANO',
-        peso_kg: 10,
-        descripcion_equipaje: 'Equipaje de mano incluido',
-      })
-
       if (item.equipaje?.equipajeBodega) {
         equipajePayload.push({
-          id_detalle: detalle.idDetalle,
+          idDetalle: detalle.idDetalle,
           tipo: 'BODEGA',
-          peso_kg: 23,
-          descripcion_equipaje: 'Equipaje de bodega adicional',
+          pesoKg: 23,
+          descripcionEquipaje: 'Maleta de bodega',
         })
       }
     }
 
     await pagarReservaApi(idReserva, {
-      cargo_servicio: CARGO_SERVICIO,
+      cargoServicio: CARGO_SERVICIO,
       equipaje: equipajePayload,
     })
 

@@ -477,7 +477,7 @@ async function pagarReserva() {
   errorModal.value = ''
   try {
     await pagarReservaApi(reservaActiva.value.idReserva, {
-      cargo_servicio: Number(formPago.value.cargo_servicio || 0),
+      cargoServicio: Number(formPago.value.cargo_servicio || 0),
       equipaje: [],
     })
     modalPago.value = false

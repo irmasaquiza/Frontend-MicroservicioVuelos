@@ -344,11 +344,11 @@ function construirPayloadEquipajePago() {
   return pasajeros.value
     .filter((pasajero) => pasajero.idDetalle && pasajero.equipajePendiente && !pasajero.tieneEquipajeReal)
     .map((pasajero) => ({
-      id_detalle: pasajero.idDetalle,
+      idDetalle: pasajero.idDetalle,
       tipo: TIPO_EQUIPAJE,
-      peso_kg: PESO_BODEGA,
-      descripcion_equipaje: valorPendiente(pasajero.idDetalle, 'descripcion') || 'Equipaje de bodega adicional',
-      dimensiones: valorPendiente(pasajero.idDetalle, 'dimensiones') || undefined,
+      pesoKg: PESO_BODEGA,
+      descripcionEquipaje:
+        valorPendiente(pasajero.idDetalle, 'descripcion') || 'Equipaje de bodega adicional',
     }))
 }
 
@@ -434,7 +434,7 @@ async function procesarPago() {
 
   try {
     await pagarReservaApi(reserva.value.idReserva, {
-      cargo_servicio: cargoServicioNumero.value,
+      cargoServicio: cargoServicioNumero.value,
       equipaje: construirPayloadEquipajePago(),
     })
     modalPago.value = false
