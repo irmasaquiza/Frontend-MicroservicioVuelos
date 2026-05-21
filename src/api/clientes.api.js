@@ -29,14 +29,12 @@ export const getMiPerfilClienteApi = () =>
 export const updateMiPerfilClienteApi = (datos) =>
   apiClient.put('/clientes/portal/mi-perfil', datos)
 
-// GET /clientes/{id} — ADMINISTRADOR, AEROLINEA, CLIENTE (solo propio)
 export const getClienteApi = (id, axiosConfig = {}) =>
   apiClient.get(`/clientes/${id}`, axiosConfig)
 
 export const createClienteApi = (datos) =>
   apiClient.post('/clientes', datos)
 
-// PUT /clientes/{id} — ADMINISTRADOR, CLIENTE (solo propio)
 export const updateClienteApi = (id, datos) =>
   apiClient.put(`/clientes/${id}`, datos)
 

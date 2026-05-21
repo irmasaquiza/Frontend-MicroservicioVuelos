@@ -60,14 +60,11 @@ function limpiarParams(params = {}, tipo = 'default') {
   return limpios
 }
 
-// GET /paises — AllowAnonymous
 export const getPaisesApi = (params = {}) =>
   apiClient.get('/paises', { params: limpiarParams(params, 'paises') })
 
-// GET /ciudades — AllowAnonymous. Filtrar por id_pais para cargar por país.
 export const getCiudadesApi = (params = {}) =>
   apiClient.get('/ciudades', { params: limpiarParams(params) })
 
-// GET /aeropuertos — AllowAnonymous
 export const getAeropuertosApi = (params = {}) =>
   apiClient.get('/aeropuertos', { params: limpiarParams(params, 'aeropuertos') })

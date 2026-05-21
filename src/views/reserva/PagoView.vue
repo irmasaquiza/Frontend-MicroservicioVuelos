@@ -554,7 +554,6 @@ async function ejecutarCompraReal() {
     const detalles = normalizarDetallesReserva(reservaResp.data?.data || reservaResp.data)
 
     estadoProceso.value = 'Procesando pago...'
-    /** Contrato PATCH /pagar: camelCase; solo registra líneas BODEGA cuando hay maleta extra */
     const equipajePayload = []
 
     for (const item of itemsPago.value) {

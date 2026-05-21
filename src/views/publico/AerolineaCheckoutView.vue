@@ -1,9 +1,8 @@
 <script setup>
 /**
  * Checkout aerolínea (?token=id_vuelo+url_retorno en JWT).
- * Pasos: 1 asiento · 2 pasajero (POST al continuar) · 3 resumen+equipaje · 4 pago.
- * Ruta `/aerolinea` exige cliente autenticado (mismo guard que `/cliente`). Modales ante sesión caducada o sin idCliente.
- * Progreso en localStorage `aerolinea_progreso` hasta pago OK.
+ * Pasos: asiento · pasajero · resumen/equipaje · pago. Cliente autenticado obligatorio (guard router).
+ * Tras pago OK redirige al inicio del mismo dominio; progreso en localStorage hasta entonces.
  */
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -15,7 +14,7 @@ import InputApp from '@/components/base/InputApp.vue'
 import SelectApp from '@/components/base/SelectApp.vue'
 import { useAutenticacionStore } from '@/stores/autenticacion.store'
 import { useCatalogosStore } from '@/stores/catalogos.store'
-import { claimsCheckoutAerolinea, jwtExpirado, MSJ_SESION_EXPIRADA, urlRetornoSegura } from '@/utils/jwtBooking'
+import { claimsCheckoutAerolinea, jwtExpirado, MSJ_SESION_EXPIRADA } from '@/utils/jwtBooking'
 import { extractItems, parseJwtPayload } from '@/utils/portalCliente'
 import {
   esTipoDocumentoSoloDigitos,
@@ -52,8 +51,8 @@ const procesandoPasajero = ref(false)
 const procesandoPago = ref(false)
 const errorFatal = ref('')
 const errorOperacion = ref('')
-/** Tras crear reserva + pago OK (visible antes de redirigir a url_retorno) */
-const mensajeReservaExito = ref('')
+/** Banner grande tras crear reserva y pagar (antes de ir al inicio del sitio) */
+const mostrarBannerExitoReserva = ref(false)
 
 /** Tiempo mínimo para leer el mensaje de éxito antes del salto externo */
 const MS_ANTES_REDIRECCION_EXITO = 2600
@@ -115,7 +114,6 @@ const form = ref({
 
 const erroresForm = ref({})
 
-/** POST /pasajeros */
 const idPasajeroBackend = ref(0)
 
 const textoTituloModalAuth = computed(() =>
@@ -124,7 +122,7 @@ const textoTituloModalAuth = computed(() =>
 const textoCuerpoModalAuth = computed(() =>
   modalAuthMotivo.value === 'pago'
     ? 'Para crear la reserva y ejecutar el pago necesitas una cuenta cliente. Ya guardamos asiento y formulario en este equipo; al entrar continuamos en la pantalla de pago.'
-    : 'Ya guardamos asiento y lo que llevabas del pasajero. Para registrar al pasajero en el servidor (POST /pasajeros) necesitas iniciar sesión o registrarte.',
+    : 'Ya guardamos asiento y lo que llevabas del pasajero. Para registrar al pasajero necesitas iniciar sesión o registrarte.',
 )
 
 const opcionesTipoDocumento = [
@@ -872,7 +870,7 @@ async function crearReservaYPagar() {
 
   procesandoPago.value = true
   errorOperacion.value = ''
-  mensajeReservaExito.value = ''
+  mostrarBannerExitoReserva.value = false
 
   try {
     const idClienteReserva = await resolverIdCliente()
@@ -954,19 +952,11 @@ async function crearReservaYPagar() {
 
     limpiarProgresoAerolinea()
 
-    const destino = urlRetornoSegura(claims.value.urlRetorno)
-    mensajeReservaExito.value = destino
-      ? '¡Reserva creada con éxito! Te redirigimos en segundos…'
-      : '¡Reserva creada con éxito!'
-
-    if (destino) {
-      window.setTimeout(() => {
-        window.location.href = destino
-      }, MS_ANTES_REDIRECCION_EXITO)
-    } else {
-      errorOperacion.value =
-        'Pago completado, pero la URL de retorno del token no es válida (solo http/https).'
-    }
+    mostrarBannerExitoReserva.value = true
+    const inicioSitio = `${window.location.origin}/`
+    window.setTimeout(() => {
+      window.location.href = inicioSitio
+    }, MS_ANTES_REDIRECCION_EXITO)
   } catch (err) {
     errorOperacion.value =
       err.response?.data?.message ||
@@ -986,12 +976,21 @@ onMounted(() => {
 <template>
   <div class="relative min-h-[calc(100vh-4rem)] bg-background py-10">
     <div
-      v-if="mensajeReservaExito"
-      class="fixed top-24 left-1/2 z-[60] max-w-[min(92vw,28rem)] -translate-x-1/2 rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-4 text-center text-sm font-semibold text-emerald-900 shadow-lg"
+      v-if="mostrarBannerExitoReserva"
+      class="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-6 backdrop-blur-[3px]"
       role="status"
       aria-live="polite"
     >
-      {{ mensajeReservaExito }}
+      <div
+        class="max-w-[min(94vw,36rem)] rounded-[32px] border-4 border-emerald-400 bg-emerald-50 px-8 py-14 text-center shadow-2xl sm:px-14 sm:py-16"
+      >
+        <p class="text-4xl font-black leading-tight tracking-tight text-emerald-950 sm:text-5xl md:text-6xl">
+          ¡Reserva creada con éxito!
+        </p>
+        <p class="mt-8 text-xl font-semibold text-emerald-900 sm:text-2xl md:text-3xl">
+          Te llevamos al inicio…
+        </p>
+      </div>
     </div>
     <!-- Modal autenticación -->
     <div
@@ -1203,10 +1202,10 @@ onMounted(() => {
             </div>
           </section>
 
-          <!-- Paso 2: Pasajero POST -->
+          <!-- Paso 2: Pasajero -->
           <section v-show="pasoActual === PASO_PASAJERO" class="overflow-hidden rounded-[28px] border border-red-100 bg-white p-6 shadow-xl sm:p-8">
             <h2 class="text-xl font-extrabold text-text-main">2 · Datos del pasajero</h2>
-            <p class="mt-1 text-sm text-text-muted">Aquí mismo se ejecuta POST /pasajeros al continuar.</p>
+            <p class="mt-1 text-sm text-text-muted">Al continuar guardamos los datos del pasajero asociados a tu cuenta.</p>
 
             <div class="mt-6 grid gap-5 md:grid-cols-2">
               <InputApp v-model="form.nombres" label="Nombres" :error="erroresForm.nombres" requerido />
@@ -1330,8 +1329,8 @@ onMounted(() => {
           <section v-show="pasoActual === PASO_PAGO" class="overflow-hidden rounded-[28px] border border-red-100 bg-white p-6 shadow-xl sm:p-8">
             <h2 class="text-xl font-extrabold text-text-main">4 · Crear y pagar</h2>
             <p class="mt-2 text-sm text-text-muted">
-              POST /reservas con los mismos montos que arriba, luego PATCH /pagar. Maleta marcada ⇒ solo línea BODEGA;
-              si no ⇒ <code class="rounded bg-red-50 px-1 text-xs">equipaje: []</code>.
+              Confirmamos la reserva con los mismos montos del resumen y procesamos el pago. Si no marcaste maleta de bodega,
+              no se añade equipaje extra.
             </p>
 
             <div class="mt-6 rounded-2xl border border-red-100 bg-white p-5 text-center">
