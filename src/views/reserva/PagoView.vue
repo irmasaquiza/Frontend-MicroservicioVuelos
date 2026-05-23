@@ -7,7 +7,7 @@ import { createPasajeroApi } from '@/api/pasajeros.api'
 import { createReservaApi, pagarReservaApi } from '@/api/reservas.api'
 import InputApp from '@/components/base/InputApp.vue'
 import SelectApp from '@/components/base/SelectApp.vue'
-import CheckoutStepper from '@/components/CheckoutStepper.vue'
+import SimulacionPasarelaPago from '@/components/pago/SimulacionPasarelaPago.vue'
 import { useAutenticacionStore } from '@/stores/autenticacion.store'
 import { useCatalogosStore } from '@/stores/catalogos.store'
 import { useReservaStore } from '@/stores/reserva.store'
@@ -37,6 +37,7 @@ const tabAuth = ref('login')
 const errorPago = ref('')
 const errorAuth = ref('')
 const procesandoPago = ref(false)
+const mostrarSimulacionPasarela = ref(false)
 const cargandoCiudades = ref(false)
 const estadoProceso = ref('')
 const ciudades = ref([])
@@ -400,13 +401,10 @@ async function autenticarYProcesar() {
     return
   }
 
+  estadoProceso.value = ''
   mostrarModalAuth.value = false
-
-  try {
-    await ejecutarCompraReal()
-  } finally {
-    procesandoPago.value = false
-  }
+  procesandoPago.value = false
+  mostrarSimulacionPasarela.value = true
 }
 
 async function registrarYProcesar() {
@@ -459,13 +457,10 @@ async function registrarYProcesar() {
     return
   }
 
+  estadoProceso.value = ''
   mostrarModalAuth.value = false
-
-  try {
-    await ejecutarCompraReal()
-  } finally {
-    procesandoPago.value = false
-  }
+  procesandoPago.value = false
+  mostrarSimulacionPasarela.value = true
 }
 
 async function ejecutarCompraReal() {
@@ -543,8 +538,6 @@ async function ejecutarCompraReal() {
       })),
     }
 
-    console.log('PAYLOAD RESERVA:', JSON.stringify(payload))
-
     const reservaResp = await createReservaApi(payload)
     const reservaReal = reservaResp.data?.data || {}
     const idReserva = reservaReal.idReserva ?? reservaReal.id_reserva ?? reservaReal.id
@@ -618,6 +611,16 @@ async function ejecutarCompraReal() {
   }
 }
 
+async function onConfirmarPasarelaSimulada() {
+  if (procesandoPago.value) return
+  procesandoPago.value = true
+  try {
+    await ejecutarCompraReal()
+  } finally {
+    procesandoPago.value = false
+  }
+}
+
 async function handlePagar() {
   errorPago.value = ''
 
@@ -627,13 +630,7 @@ async function handlePagar() {
   }
 
   if (procesandoPago.value) return
-  procesandoPago.value = true
-
-  try {
-    await ejecutarCompraReal()
-  } finally {
-    procesandoPago.value = false
-  }
+  mostrarSimulacionPasarela.value = true
 }
 
 onMounted(async () => {
@@ -658,6 +655,12 @@ onMounted(async () => {
 
 <template>
   <div>
+    <SimulacionPasarelaPago
+      v-model="mostrarSimulacionPasarela"
+      :monto-texto="moneda(totalPagar)"
+      titulo="Confirma el pago"
+      @confirmar="onConfirmarPasarelaSimulada"
+    />
     <CheckoutStepper :paso-actual="5" />
 
     <section class="min-h-[calc(100vh-64px)] bg-background py-10">

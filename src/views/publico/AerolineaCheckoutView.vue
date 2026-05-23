@@ -12,6 +12,7 @@ import { createReservaApi, pagarReservaApi } from '@/api/reservas.api'
 import { getAsientosVueloBookingApi, getVueloBookingDetalleApi } from '@/api/vuelos.api'
 import InputApp from '@/components/base/InputApp.vue'
 import SelectApp from '@/components/base/SelectApp.vue'
+import SimulacionPasarelaPago from '@/components/pago/SimulacionPasarelaPago.vue'
 import { useAutenticacionStore } from '@/stores/autenticacion.store'
 import { useCatalogosStore } from '@/stores/catalogos.store'
 import { claimsCheckoutAerolinea, jwtExpirado, MSJ_SESION_EXPIRADA } from '@/utils/jwtBooking'
@@ -62,6 +63,8 @@ const modalAuthVisible = ref(false)
 const pendienteIrAlPasoPago = ref(false)
 /** 'pasajero' | 'pago' — texto del modal */
 const modalAuthMotivo = ref('pago')
+
+const mostrarSimulacionPasarela = ref(false)
 
 const pasoActual = ref(PASO_ASIENTO)
 
@@ -852,7 +855,7 @@ function correccionPasajeroDesdeResumen() {
   persistirProgresoAerolinea()
 }
 
-async function crearReservaYPagar() {
+function crearReservaYPagar() {
   if (!claims.value || !vuelo.value || !asientoSeleccionado.value) {
     errorOperacion.value = 'Faltan datos.'
     return
@@ -865,6 +868,21 @@ async function crearReservaYPagar() {
   if (!auth.estaAutenticado) {
     abrirModalAuthPagoYSerializar()
     errorOperacion.value = 'Debes iniciar sesión como cliente para pagar.'
+    return
+  }
+
+  errorOperacion.value = ''
+  mostrarBannerExitoReserva.value = false
+  mostrarSimulacionPasarela.value = true
+}
+
+async function confirmarPasarelaSimuladaAerolinea() {
+  if (!claims.value || !vuelo.value || !asientoSeleccionado.value) {
+    errorOperacion.value = 'Faltan datos.'
+    return
+  }
+  if (!idPasajeroBackend.value) {
+    pasoActual.value = PASO_PASAJERO
     return
   }
 
@@ -975,6 +993,12 @@ onMounted(() => {
 
 <template>
   <div class="relative min-h-[calc(100vh-4rem)] bg-background py-10">
+    <SimulacionPasarelaPago
+      v-model="mostrarSimulacionPasarela"
+      :monto-texto="moneda(totalLinea)"
+      titulo="Pagar reserva aerolínea"
+      @confirmar="confirmarPasarelaSimuladaAerolinea"
+    />
     <div
       v-if="mostrarBannerExitoReserva"
       class="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-6 backdrop-blur-[3px]"
