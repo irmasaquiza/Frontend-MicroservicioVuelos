@@ -12,7 +12,10 @@ const emailEnviado = ref(false)
 
 const pasajeroPrincipal = computed(() => confirmacion.value?.pasajeros?.[0] || null)
 const pasajeros = computed(() => confirmacion.value?.pasajeros || [])
-const pasajerosConBodega = computed(() => pasajeros.value.filter((item) => item.equipajeBodega))
+const pasajerosConBodega = computed(() =>
+  pasajeros.value.filter((item) => item.equipajeBodega || item.equipajeBodegaRegreso),
+)
+const esResumenIdaYVuelta = computed(() => confirmacion.value?.modo === 'IDA_VUELTA')
 
 function moneda(valor) {
   return new Intl.NumberFormat('es-EC', {
@@ -35,9 +38,11 @@ function telefonoLegible(valor) {
   return String(valor || '').trim() || '-'
 }
 
-function etiquetaEquipaje(index) {
-  const sufijo = String(index + 1).padStart(3, '0')
-  return `${confirmacion.value?.numeroVuelo || 'AV1001'}-${sufijo}`
+function etiquetaEquipaje(sufijoPersonalizado) {
+  const base = String(confirmacion.value?.codigoReserva || confirmacion.value?.numeroVuelo || 'AV1001')
+    .replace(/\s+/g, '')
+    .replace(/[^\w.-]/g, '')
+  return `${base}-${String(sufijoPersonalizado)}`
 }
 
 function boletoEmitido(index) {
@@ -95,21 +100,57 @@ onMounted(() => {
 
           <div v-if="confirmacion" class="mt-10 space-y-8">
             <div class="grid gap-6 lg:grid-cols-2">
-              <section class="rounded-[28px] bg-slate-50 p-6">
-                <h2 class="text-xl font-semibold text-navy sm:text-2xl">Detalles del Vuelo</h2>
-                <div class="mt-6 grid gap-4 text-sm text-text-muted sm:grid-cols-[120px_1fr] sm:text-base">
-                  <span>Vuelo:</span>
-                  <span class="font-semibold text-navy">{{ confirmacion.numeroVuelo }}</span>
-                  <span>Ruta:</span>
-                  <span class="font-semibold text-navy">{{ confirmacion.ruta }}</span>
-                  <span>Fecha:</span>
-                  <span class="font-semibold text-navy">{{ fechaLegible(confirmacion.fecha) }}</span>
-                  <span>Horario:</span>
-                  <span class="font-semibold text-navy">{{ confirmacion.horario }}</span>
-                  <span>Asiento:</span>
-                  <span class="font-semibold text-navy">{{ pasajeroPrincipal?.asiento || '-' }}</span>
-                </div>
-              </section>
+              <template v-if="esResumenIdaYVuelta">
+                <section class="rounded-[28px] bg-slate-50 p-6">
+                  <h2 class="text-xl font-semibold text-navy sm:text-2xl">Ida</h2>
+                  <div class="mt-6 grid gap-4 text-sm text-text-muted sm:text-base">
+                    <div class="grid gap-4 sm:grid-cols-[120px_1fr]">
+                      <span>Vuelo:</span>
+                      <span class="font-semibold text-navy">
+                        {{ (confirmacion.numeroVuelo || '').split('/')[0]?.trim() || '-' }}
+                      </span>
+                      <span>Ruta:</span>
+                      <span class="font-semibold text-navy">{{ confirmacion.rutaIda }}</span>
+                      <span>Fecha:</span>
+                      <span class="font-semibold text-navy">{{ fechaLegible(confirmacion.fecha) }}</span>
+                      <span>Horario:</span>
+                      <span class="font-semibold text-navy">{{ confirmacion.horario }}</span>
+                    </div>
+                  </div>
+                </section>
+                <section class="rounded-[28px] bg-slate-50 p-6">
+                  <h2 class="text-xl font-semibold text-navy sm:text-2xl">Vuelta</h2>
+                  <div class="mt-6 grid gap-4 text-sm text-text-muted sm:text-base">
+                    <div class="grid gap-4 sm:grid-cols-[120px_1fr]">
+                      <span>Vuelo:</span>
+                      <span class="font-semibold text-navy">
+                        {{ (confirmacion.numeroVuelo || '').split('/')[1]?.trim() || '-' }}
+                      </span>
+                      <span>Ruta:</span>
+                      <span class="font-semibold text-navy">{{ confirmacion.rutaVuelta }}</span>
+                      <span>Horario:</span>
+                      <span class="font-semibold text-navy">{{ confirmacion.horarioVuelta }}</span>
+                    </div>
+                  </div>
+                </section>
+              </template>
+              <template v-else>
+                <section class="rounded-[28px] bg-slate-50 p-6">
+                  <h2 class="text-xl font-semibold text-navy sm:text-2xl">Detalles del Vuelo</h2>
+                  <div class="mt-6 grid gap-4 text-sm text-text-muted sm:grid-cols-[120px_1fr] sm:text-base">
+                    <span>Vuelo:</span>
+                    <span class="font-semibold text-navy">{{ confirmacion.numeroVuelo }}</span>
+                    <span>Ruta:</span>
+                    <span class="font-semibold text-navy">{{ confirmacion.ruta }}</span>
+                    <span>Fecha:</span>
+                    <span class="font-semibold text-navy">{{ fechaLegible(confirmacion.fecha) }}</span>
+                    <span>Horario:</span>
+                    <span class="font-semibold text-navy">{{ confirmacion.horario }}</span>
+                    <span>Asiento:</span>
+                    <span class="font-semibold text-navy">{{ pasajeroPrincipal?.asiento || '-' }}</span>
+                  </div>
+                </section>
+              </template>
 
               <section class="rounded-[28px] bg-slate-50 p-6">
                 <h2 class="text-xl font-semibold text-navy sm:text-2xl">Pasajero</h2>
@@ -118,6 +159,12 @@ onMounted(() => {
                   <span class="font-semibold text-navy">{{ pasajeroPrincipal?.nombre || '-' }}</span>
                   <span>Documento:</span>
                   <span class="font-semibold text-navy">{{ pasajeroPrincipal?.documento || '-' }}</span>
+                  <span>{{ esResumenIdaYVuelta ? 'Asiento · Ida:' : 'Asiento:' }}</span>
+                  <span class="font-semibold text-navy">{{ pasajeroPrincipal?.asiento || '-' }}</span>
+                  <template v-if="esResumenIdaYVuelta">
+                    <span>Asiento · Vuelta:</span>
+                    <span class="font-semibold text-navy">{{ pasajeroPrincipal?.asientoRegreso || '-' }}</span>
+                  </template>
                   <span>Email:</span>
                   <span class="font-semibold text-navy">{{ pasajeroPrincipal?.email || '-' }}</span>
                   <span>Teléfono:</span>
@@ -139,19 +186,40 @@ onMounted(() => {
                   </div>
                 </div>
 
-                <div
-                  v-for="(pasajero, index) in pasajerosConBodega"
-                  :key="`bodega-${index}`"
-                  class="rounded-[22px] bg-white px-5 py-5"
-                >
-                  <div class="flex items-center justify-between gap-4">
-                    <div>
-                      <p class="text-lg font-semibold text-navy sm:text-xl">Equipaje de Bodega (23kg)</p>
-                      <p class="mt-1 text-sm text-text-muted sm:text-base">Etiqueta: {{ etiquetaEquipaje(index) }}</p>
+                <template v-for="(pasajero, index) in pasajeros" :key="`pax-bag-${index}`">
+                  <div
+                    v-if="pasajero.equipajeBodega"
+                    class="rounded-[22px] bg-white px-5 py-5"
+                  >
+                    <div class="flex items-center justify-between gap-4">
+                      <div>
+                        <p class="text-lg font-semibold text-navy sm:text-xl">
+                          Maleta · Ida · {{ pasajero.nombre }}
+                        </p>
+                        <p class="mt-1 text-sm text-text-muted sm:text-base">
+                          Etiqueta: {{ etiquetaEquipaje(`${index}-ida`) }}
+                        </p>
+                      </div>
+                      <p class="text-lg font-semibold text-navy sm:text-xl">{{ moneda(45) }}</p>
                     </div>
-                    <p class="text-lg font-semibold text-navy sm:text-xl">{{ moneda(45) }}</p>
                   </div>
-                </div>
+                  <div
+                    v-if="pasajero.equipajeBodegaRegreso"
+                    class="rounded-[22px] bg-white px-5 py-5"
+                  >
+                    <div class="flex items-center justify-between gap-4">
+                      <div>
+                        <p class="text-lg font-semibold text-navy sm:text-xl">
+                          Maleta · Vuelta · {{ pasajero.nombre }}
+                        </p>
+                        <p class="mt-1 text-sm text-text-muted sm:text-base">
+                          Etiqueta: {{ etiquetaEquipaje(`${index}-regreso`) }}
+                        </p>
+                      </div>
+                      <p class="text-lg font-semibold text-navy sm:text-xl">{{ moneda(45) }}</p>
+                    </div>
+                  </div>
+                </template>
 
                 <div
                   v-if="!pasajerosConBodega.length"

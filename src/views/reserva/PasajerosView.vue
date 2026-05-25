@@ -22,6 +22,8 @@ const errores = ref({})
 const pasajeros = ref([])
 
 const vuelo = computed(() => reserva.vuelo)
+const vueloRegreso = computed(() => reserva.vueloRegreso)
+const esComboIdaVuelta = computed(() => reserva.esIdaYVuelta)
 const opcionesPaises = computed(() =>
   catalogos.paises.map((pais) => ({
     valor: String(pais.idPais ?? pais.id_pais ?? pais.id),
@@ -83,10 +85,18 @@ function cantidadObjetivo() {
 
 function actualizarCantidadReserva(cantidad) {
   if (!vuelo.value) return
-  reserva.setVuelo({
+  const baseIda = {
     ...vuelo.value,
     pasajeros: cantidad,
-  })
+  }
+  reserva.setVuelo(baseIda)
+  const regreso = reserva.vueloRegreso
+  if (regreso?.idVuelo) {
+    reserva.setVueloRegreso({
+      ...regreso,
+      pasajeros: cantidad,
+    })
+  }
 }
 
 function inicializarPasajeros() {
@@ -234,7 +244,7 @@ function continuarAsientos() {
 }
 
 onMounted(async () => {
-  if (!vuelo.value) {
+  if (!vuelo.value || (reserva.esIdaYVuelta && !reserva.vueloRegreso?.idVuelo)) {
     router.replace({ name: 'buscar-vuelos' })
     return
   }
@@ -456,9 +466,18 @@ onMounted(async () => {
                   class="relative mt-6 flex flex-wrap items-end justify-between gap-3 rounded-[22px] border border-white/20 bg-black/15 px-5 py-4 backdrop-blur-[2px]"
                 >
                   <div>
-                    <p class="text-[11px] font-semibold uppercase tracking-wider text-white/65">Tarifa base</p>
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-white/65">
+                      {{
+                        esComboIdaVuelta ? 'Tarifa base combinada · ida + vuelta' : 'Tarifa base'
+                      }}
+                    </p>
                     <p class="mt-1 text-3xl font-extrabold tabular-nums tracking-tight sm:text-4xl">
-                      {{ monedaResumen(vuelo?.precioBase) }}
+                      {{
+                        monedaResumen(
+                          Number(vuelo?.precioBase || 0) +
+                            (esComboIdaVuelta ? Number(vueloRegreso?.precioBase || 0) : 0),
+                        )
+                      }}
                     </p>
                     <p class="mt-1 text-xs text-white/70">por persona (sin cargos extras)</p>
                   </div>
@@ -523,6 +542,16 @@ onMounted(async () => {
                     </p>
                   </div>
                 </div>
+
+                <template v-if="esComboIdaVuelta && vueloRegreso">
+                  <div class="border-t border-red-100 py-4">
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-[#d71920]">Tramo de vuelta</p>
+                    <p class="mt-2 text-sm font-bold text-text-main">{{ vueloRegreso.numeroVuelo }}</p>
+                    <p class="mt-1 text-sm text-text-muted">
+                      {{ fechaResumenLegible(vueloRegreso.fechaHoraSalida) }}
+                    </p>
+                  </div>
+                </template>
               </div>
 
               <div class="border-t border-dashed border-red-100 bg-red-50/40 px-5 py-5">
@@ -550,9 +579,13 @@ onMounted(async () => {
                 <button
                   type="button"
                   class="mt-3 w-full rounded-2xl border-2 border-red-100 bg-white px-6 py-3.5 text-sm font-semibold text-[#d71920] transition-colors hover:border-red-200 hover:bg-red-50/70"
-                  @click="router.push({ name: 'detalle-vuelo', params: { id: vuelo?.idVuelo } })"
+                  @click="
+                    esComboIdaVuelta
+                      ? router.push({ name: 'buscar-vuelos' })
+                      : router.push({ name: 'detalle-vuelo', params: { id: vuelo?.idVuelo } })
+                  "
                 >
-                  Volver al vuelo
+                  {{ esComboIdaVuelta ? 'Volver a la busqueda' : 'Volver al vuelo' }}
                 </button>
               </div>
             </div>

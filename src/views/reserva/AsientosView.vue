@@ -16,10 +16,27 @@ const cargando = ref(false)
 const errorGeneral = ref('')
 const asientosApi = ref([])
 const pasajeroActivo = ref(0)
-const seleccionPorPasajero = ref([])
+const esIdaYVuelta = computed(() => reserva.esIdaYVuelta)
+const tramoActual = ref('ida')
+const seleccionIda = ref([])
+const seleccionRegreso = ref([])
 
 const vuelo = computed(() => reserva.vuelo)
+const vueloRegreso = computed(() => reserva.vueloRegreso)
 const pasajeros = computed(() => reserva.pasajeros || [])
+
+function seleccionActivaRef() {
+  return tramoActual.value === 'ida' ? seleccionIda : seleccionRegreso
+}
+
+function tramoTieneTodosAsientos(sel) {
+  const arr = sel || []
+  return pasajeros.value.length > 0 && pasajeros.value.every((_, i) => Boolean(arr[i]?.idAsiento))
+}
+
+const vueloActivo = computed(() =>
+  esIdaYVuelta.value && tramoActual.value === 'vuelta' ? vueloRegreso.value : vuelo.value,
+)
 
 function moneda(valor) {
   return new Intl.NumberFormat('es-EC', {
@@ -125,21 +142,23 @@ const pasajerosConSeleccion = computed(() =>
   pasajeros.value.map((pasajero, indice) => ({
     indice,
     nombre: [pasajero.nombre_pasajero, pasajero.apellido_pasajero].filter(Boolean).join(' ') || `Pasajero ${indice + 1}`,
-    asiento: seleccionPorPasajero.value[indice] || null,
+    asiento: seleccionActivaRef().value[indice] || null,
+    asientoIda: seleccionIda.value[indice] || null,
+    asientoRegreso: esIdaYVuelta.value ? seleccionRegreso.value[indice] || null : null,
   })),
 )
 
 const pasajeroActivoData = computed(() => pasajerosConSeleccion.value[pasajeroActivo.value] || null)
 
-const pasajerosCompletos = computed(
-  () =>
-    pasajeros.value.length > 0 &&
-    seleccionPorPasajero.value.length === pasajeros.value.length &&
-    seleccionPorPasajero.value.every((item) => item?.idAsiento),
-)
+const pasajerosCompletos = computed(() => {
+  if (!pasajeros.value.length) return false
+  if (!tramoTieneTodosAsientos(seleccionIda.value)) return false
+  if (esIdaYVuelta.value && !tramoTieneTodosAsientos(seleccionRegreso.value)) return false
+  return true
+})
 
 const asientosSeleccionadosIds = computed(() =>
-  seleccionPorPasajero.value.map((item) => item?.idAsiento).filter(Boolean),
+  seleccionActivaRef().value.map((item) => item?.idAsiento).filter(Boolean),
 )
 
 const resumenAsientos = computed(() => {
@@ -154,16 +173,12 @@ const resumenAsientos = computed(() => {
   }
 })
 
-const recargoAsientos = computed(() =>
-  seleccionPorPasajero.value.reduce((total, asiento) => total + Number(asiento?.precioExtra || 0), 0),
-)
-
-const totalConAsientos = computed(() => {
-  const base = Number(vuelo.value?.precioBase || 0) * pasajeros.value.length
-  const subtotal = base + recargoAsientos.value
-  const iva = Number((subtotal * 0.15).toFixed(2))
-  return Number((subtotal + iva).toFixed(2))
+const recargoAsientos = computed(() => {
+  const sumExtras = (arr) => (arr || []).reduce((t, a) => t + Number(a?.precioExtra || 0), 0)
+  return sumExtras(seleccionIda.value) + (esIdaYVuelta.value ? sumExtras(seleccionRegreso.value) : 0)
 })
+
+const totalConAsientos = computed(() => Number(reserva.total || 0))
 
 function asientoPorPosicion(fila, columna) {
   return mapaAsientos.value.get(`${fila}-${columna}`) || null
@@ -185,7 +200,9 @@ function posicionLegible(posicion) {
 function estadoAsiento(asiento, fila, columna) {
   if (!asiento) return 'ocupado'
 
-  const seleccionadoActual = seleccionPorPasajero.value[pasajeroActivo.value]?.idAsiento === asiento.idAsiento
+  const activa = seleccionActivaRef().value
+
+  const seleccionadoActual = activa[pasajeroActivo.value]?.idAsiento === asiento.idAsiento
   if (seleccionadoActual) return 'seleccionado'
 
   const seleccionadoPorOtro = asientosSeleccionadosIds.value.includes(asiento.idAsiento)
@@ -196,15 +213,34 @@ function estadoAsiento(asiento, fila, columna) {
   return 'disponible'
 }
 
+function persistirSeleccionesEnTienda() {
+  const padIda = () => pasajeros.value.map((_, i) => seleccionIda.value[i] ?? null)
+  const padRet = () => pasajeros.value.map((_, i) => seleccionRegreso.value[i] ?? null)
+  reserva.setAsientos(padIda())
+  if (esIdaYVuelta.value) reserva.setAsientosRegreso(padRet())
+  else reserva.setAsientosRegreso([])
+}
+
+async function cambiarTramoAsientos(siguiente) {
+  if (siguiente === tramoActual.value) return
+  tramoActual.value = siguiente
+  const bucket = seleccionActivaRef()
+  pasajeroActivo.value = Math.max(bucket.value.findIndex((item) => !item?.idAsiento), 0)
+  await cargarAsientos()
+}
+
 function seleccionarAsiento(asiento) {
   if (!asiento || !asiento.disponible) return
 
-  const yaTomadoPorOtro = seleccionPorPasajero.value.some(
+  const bucket = seleccionActivaRef()
+  const lista = bucket.value
+
+  const yaTomadoPorOtro = lista.some(
     (seleccion, indice) => indice !== pasajeroActivo.value && seleccion?.idAsiento === asiento.idAsiento,
   )
   if (yaTomadoPorOtro) return
 
-  seleccionPorPasajero.value[pasajeroActivo.value] = {
+  lista[pasajeroActivo.value] = {
     idAsiento: asiento.idAsiento,
     numeroAsiento: asiento.numeroAsiento,
     precioExtra: asiento.precioExtra,
@@ -215,21 +251,32 @@ function seleccionarAsiento(asiento) {
     pasajeroIndex: pasajeroActivo.value,
   }
 
-  reserva.setAsientos(seleccionPorPasajero.value.filter(Boolean))
+  persistirSeleccionesEnTienda()
 
-  const siguientePendiente = seleccionPorPasajero.value.findIndex((item) => !item?.idAsiento)
+  const siguientePendiente = lista.findIndex((item) => !item?.idAsiento)
   if (siguientePendiente !== -1) {
     pasajeroActivo.value = siguientePendiente
+    return
+  }
+
+  if (
+    esIdaYVuelta.value &&
+    tramoActual.value === 'ida' &&
+    tramoTieneTodosAsientos(seleccionIda.value) &&
+    !tramoTieneTodosAsientos(seleccionRegreso.value)
+  ) {
+    void cambiarTramoAsientos('vuelta')
   }
 }
 
 async function cargarAsientos() {
-  if (!vuelo.value?.idVuelo) return
+  const activo = vueloActivo.value
+  if (!activo?.idVuelo) return
 
   cargando.value = true
   errorGeneral.value = ''
   try {
-    const { data } = await getAsientosVueloBookingApi(vuelo.value.idVuelo)
+    const { data } = await getAsientosVueloBookingApi(activo.idVuelo)
 
     asientosApi.value = extractItems(data)
       .map(normalizarAsiento)
@@ -243,7 +290,7 @@ async function cargarAsientos() {
 
 function continuarEquipaje() {
   if (!pasajerosCompletos.value) return
-  reserva.setAsientos(seleccionPorPasajero.value.filter(Boolean))
+  persistirSeleccionesEnTienda()
   router.push({ name: 'equipaje' })
 }
 
@@ -253,13 +300,32 @@ onMounted(async () => {
     return
   }
 
+  if (esIdaYVuelta.value && !vueloRegreso.value?.idVuelo) {
+    router.replace({ name: 'buscar-vuelos' })
+    return
+  }
+
   if (!pasajeros.value.length) {
     router.replace({ name: 'datos-pasajeros' })
     return
   }
 
-  seleccionPorPasajero.value = pasajeros.value.map((_, indice) => reserva.asientos[indice] || null)
-  pasajeroActivo.value = Math.max(seleccionPorPasajero.value.findIndex((item) => !item?.idAsiento), 0)
+  seleccionIda.value = pasajeros.value.map((_, indice) => reserva.asientos[indice] || null)
+  seleccionRegreso.value = pasajeros.value.map((_, indice) => reserva.asientosRegreso?.[indice] || null)
+
+  if (
+    esIdaYVuelta.value &&
+    tramoTieneTodosAsientos(seleccionIda.value) &&
+    !tramoTieneTodosAsientos(seleccionRegreso.value)
+  ) {
+    tramoActual.value = 'vuelta'
+  }
+
+  persistirSeleccionesEnTienda()
+
+  const listaActiva = seleccionActivaRef().value
+  pasajeroActivo.value = Math.max(listaActiva.findIndex((item) => !item?.idAsiento), 0)
+
   await cargarAsientos()
 })
 </script>
@@ -291,6 +357,36 @@ onMounted(async () => {
               </p>
             </div>
 
+            <div
+              v-if="esIdaYVuelta"
+              class="flex flex-wrap gap-2 border-b border-red-50 bg-red-50/30 px-8 py-4"
+            >
+              <button
+                type="button"
+                class="rounded-2xl border px-4 py-3 text-left text-sm font-bold transition-colors"
+                :class="
+                  tramoActual === 'ida'
+                    ? 'border-[#d71920] bg-red-50 text-[#d71920]'
+                    : 'border-red-100 bg-white text-navy hover:bg-red-50/50'
+                "
+                @click="cambiarTramoAsientos('ida')"
+              >
+                Ida · {{ vuelo?.numeroVuelo }}
+              </button>
+              <button
+                type="button"
+                class="rounded-2xl border px-4 py-3 text-left text-sm font-bold transition-colors"
+                :class="
+                  tramoActual === 'vuelta'
+                    ? 'border-[#d71920] bg-red-50 text-[#d71920]'
+                    : 'border-red-100 bg-white text-navy hover:bg-red-50/50'
+                "
+                @click="cambiarTramoAsientos('vuelta')"
+              >
+                Vuelta · {{ vueloRegreso?.numeroVuelo }}
+              </button>
+            </div>
+
             <div class="flex flex-wrap gap-3 px-8 py-6">
               <button
                 v-for="pasajero in pasajerosConSeleccion"
@@ -300,14 +396,21 @@ onMounted(async () => {
                 :class="
                   pasajeroActivo === pasajero.indice
                     ? 'border-[#d71920] bg-red-50 text-[#d71920]'
-                    : pasajero.asiento
+                    : (esIdaYVuelta ? pasajero.asientoIda?.idAsiento && pasajero.asientoRegreso?.idAsiento : pasajero.asiento?.idAsiento)
                       ? 'border-[#111827] bg-slate-50'
                       : 'border-red-100 bg-white'
                 "
                 @click="pasajeroActivo = pasajero.indice"
               >
                 <p class="font-semibold text-navy">{{ pasajero.nombre }}</p>
-                <p class="mt-1 text-sm text-text-muted">
+                <p v-if="esIdaYVuelta" class="mt-1 text-sm text-text-muted">
+                  Ida {{ pasajero.asientoIda?.numeroAsiento || '-' }} · Vuelta
+                  {{ pasajero.asientoRegreso?.numeroAsiento || '-' }}
+                  <span v-if="pasajero.asiento?.numeroAsiento" class="block text-[11px] text-[#d71920]">
+                    (editando {{ tramoActual === 'ida' ? 'ida' : 'vuelta' }})
+                  </span>
+                </p>
+                <p v-else class="mt-1 text-sm text-text-muted">
                   {{ pasajero.asiento?.numeroAsiento || 'Sin asiento seleccionado' }}
                 </p>
               </button>
@@ -356,7 +459,7 @@ onMounted(async () => {
 
               <div class="mt-8 flex justify-center">
                 <div class="rounded-t-[48px] bg-[#d71920] px-10 py-4 text-center text-sm font-semibold text-white shadow-lg shadow-red-200">
-                  Cabina del vuelo {{ vuelo.numeroVuelo }}
+                  Cabina {{ tramoActual === 'vuelta' ? 'vuelta' : 'ida' }} · {{ vueloActivo?.numeroVuelo }}
                 </div>
               </div>
 
@@ -449,8 +552,50 @@ onMounted(async () => {
           </div>
 
           <aside class="rounded-[30px] border border-red-100 bg-white p-8 shadow-sm">
-            <h2 class="text-2xl font-bold text-navy">Resumen del Vuelo</h2>
-            <div class="mt-6 space-y-4 text-text-muted">
+            <h2 class="text-2xl font-bold text-navy">Resumen del vuelo</h2>
+
+            <div v-if="esIdaYVuelta" class="mt-6 space-y-4">
+              <div class="rounded-2xl border border-red-100 bg-red-50/40 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wider text-[#d71920]">Tramo · Ida</p>
+                <div class="mt-3 space-y-2 text-sm text-text-muted">
+                  <div class="flex items-center justify-between gap-2">
+                    <span>Vuelo</span>
+                    <span class="text-right font-semibold text-navy">{{ vuelo.numeroVuelo }}</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-2">
+                    <span>Fecha</span>
+                    <span class="text-right font-semibold text-navy">{{ fechaLegible(vuelo.fechaHoraSalida) }}</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-2">
+                    <span>Tarifa base</span>
+                    <span class="font-semibold text-navy">{{ moneda(vuelo.precioBase) }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="rounded-2xl border border-red-100 bg-red-50/40 p-4">
+                <p class="text-xs font-semibold uppercase tracking-wider text-[#d71920]">Tramo · Vuelta</p>
+                <div class="mt-3 space-y-2 text-sm text-text-muted">
+                  <div class="flex items-center justify-between gap-2">
+                    <span>Vuelo</span>
+                    <span class="text-right font-semibold text-navy">{{ vueloRegreso.numeroVuelo }}</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-2">
+                    <span>Fecha</span>
+                    <span class="text-right font-semibold text-navy">{{ fechaLegible(vueloRegreso.fechaHoraSalida) }}</span>
+                  </div>
+                  <div class="flex items-center justify-between gap-2">
+                    <span>Tarifa base</span>
+                    <span class="font-semibold text-navy">{{ moneda(vueloRegreso.precioBase) }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center justify-between text-sm text-text-muted">
+                <span>Pasajeros</span>
+                <span class="font-semibold text-navy">{{ pasajeros.length }}</span>
+              </div>
+            </div>
+
+            <div v-else class="mt-6 space-y-4 text-text-muted">
               <div class="flex items-center justify-between">
                 <span>Codigo</span>
                 <span class="font-semibold text-navy">{{ vuelo.numeroVuelo }}</span>
@@ -471,8 +616,15 @@ onMounted(async () => {
 
             <div class="mt-6 border-t border-slate-200 pt-6">
               <div class="flex items-center justify-between">
-                <span class="text-2xl font-semibold text-navy">Desde</span>
-                <span class="text-4xl font-extrabold text-[#d71920]">{{ moneda(vuelo.precioBase) }}</span>
+                <span class="text-xl font-semibold text-navy">Tarifa base (todos los tramos)</span>
+                <span class="text-3xl font-extrabold text-[#d71920]">
+                  {{
+                    moneda(
+                      (Number(vuelo.precioBase || 0) + (esIdaYVuelta ? Number(vueloRegreso?.precioBase || 0) : 0)) *
+                        pasajeros.length,
+                    )
+                  }}
+                </span>
               </div>
             </div>
 
@@ -483,12 +635,24 @@ onMounted(async () => {
                 class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
               >
                 <p class="font-semibold text-navy">{{ pasajero.nombre }}</p>
-                <p class="mt-1 text-sm text-text-muted">
+                <p v-if="esIdaYVuelta" class="mt-1 text-sm text-text-muted">
+                  Ida {{ pasajero.asientoIda?.numeroAsiento || 'pendiente' }} · Vuelta
+                  {{ pasajero.asientoRegreso?.numeroAsiento || 'pendiente' }}
+                </p>
+                <p v-else class="mt-1 text-sm text-text-muted">
                   {{ pasajero.asiento?.numeroAsiento || 'Pendiente de seleccionar' }}
                 </p>
-                <p v-if="pasajero.asiento" class="mt-1 text-xs text-text-muted">
+                <p v-if="!esIdaYVuelta && pasajero.asiento" class="mt-1 text-xs text-text-muted">
                   {{ claseLegible(pasajero.asiento.clase) }} · {{ moneda(pasajero.asiento.precioExtra || 0) }}
                 </p>
+                <div v-if="esIdaYVuelta" class="mt-2 space-y-1 text-xs text-text-muted">
+                  <p v-if="pasajero.asientoIda?.idAsiento">
+                    Ida — {{ claseLegible(pasajero.asientoIda.clase) }} · {{ moneda(pasajero.asientoIda.precioExtra || 0) }}
+                  </p>
+                  <p v-if="pasajero.asientoRegreso?.idAsiento">
+                    Vuelta — {{ claseLegible(pasajero.asientoRegreso.clase) }} · {{ moneda(pasajero.asientoRegreso.precioExtra || 0) }}
+                  </p>
+                </div>
               </div>
             </div>
 

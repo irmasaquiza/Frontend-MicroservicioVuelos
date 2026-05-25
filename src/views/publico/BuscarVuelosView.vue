@@ -5,6 +5,7 @@ import { buscarVuelosBookingApi } from '@/api/vuelos.api'
 import { useCatalogosStore } from '@/stores/catalogos.store'
 import { useReservaStore } from '@/stores/reserva.store'
 import { extractItems } from '@/utils/portalCliente'
+import TarjetaVueloBusqueda from '@/views/publico/TarjetaVueloBusqueda.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,9 +16,15 @@ const cargando = ref(false)
 const cargandoDestacados = ref(false)
 const errorGeneral = ref('')
 const resultados = ref([])
+const resultadosRegreso = ref([])
 const destacados = ref([])
 const vueloExpandido = ref(null)
-const tipoViaje = ref(route.query.tipo || 'IDA_VUELTA')
+const vueloExpandidoRegreso = ref(null)
+/** SOLO_IDA · IDA_VUELTA — ida y vuelta: dos columnas y dos búsquedas */
+const tipoViaje = ref(route.query.tipo || 'SOLO_IDA')
+
+const seleccionIda = ref(null)
+const seleccionRegreso = ref(null)
 const form = ref({
   origen: route.query.origen || '',
   destino: route.query.destino || '',
@@ -28,8 +35,12 @@ const form = ref({
 })
 
 const opcionesAeropuertos = computed(() => catalogos.opcionesAeropuertos)
-const puedeBuscar = computed(() => !!form.value.origen && !!form.value.destino && !!form.value.salida)
-const listaVisible = computed(() => (puedeBuscar.value ? resultados.value : destacados.value))
+const puedeBuscar = computed(() => {
+  if (!form.value.origen || !form.value.destino || !form.value.salida) return false
+  if (tipoViaje.value === 'IDA_VUELTA' && !form.value.regreso) return false
+  return true
+})
+
 const ESTADOS_VISIBLES_PUBLICO = new Set(['PROGRAMADO'])
 
 function normalizarLista(data) {
@@ -230,17 +241,39 @@ async function buscar() {
   errorGeneral.value = ''
 
   try {
-    const items = await cargarVuelosPaginados({
-      id_aeropuerto_origen: form.value.origen,
-      id_aeropuerto_destino: form.value.destino,
-      fecha_salida: form.value.salida,
-    })
+    if (tipoViaje.value === 'IDA_VUELTA') {
+      const [itemsIda, itemsVuelta] = await Promise.all([
+        cargarVuelosPaginados({
+          id_aeropuerto_origen: form.value.origen,
+          id_aeropuerto_destino: form.value.destino,
+          fecha_salida: form.value.salida,
+        }),
+        cargarVuelosPaginados({
+          id_aeropuerto_origen: form.value.destino,
+          id_aeropuerto_destino: form.value.origen,
+          fecha_salida: form.value.regreso,
+        }),
+      ])
 
-    resultados.value = items.map(normalizarVuelo).filter(esVueloVisiblePublico).sort(ordenarVuelos)
+      resultados.value = itemsIda.map(normalizarVuelo).filter(esVueloVisiblePublico).sort(ordenarVuelos)
+      resultadosRegreso.value = itemsVuelta.map(normalizarVuelo).filter(esVueloVisiblePublico).sort(ordenarVuelos)
+    } else {
+      resultadosRegreso.value = []
+      const items = await cargarVuelosPaginados({
+        id_aeropuerto_origen: form.value.origen,
+        id_aeropuerto_destino: form.value.destino,
+        fecha_salida: form.value.salida,
+      })
+      resultados.value = items.map(normalizarVuelo).filter(esVueloVisiblePublico).sort(ordenarVuelos)
+    }
 
+    seleccionIda.value = null
+    seleccionRegreso.value = null
     vueloExpandido.value = null
+    vueloExpandidoRegreso.value = null
   } catch (error) {
     resultados.value = []
+    resultadosRegreso.value = []
     errorGeneral.value =
       error.response?.data?.message || 'No se pudieron cargar los vuelos disponibles en este momento.'
   } finally {
@@ -276,13 +309,29 @@ function sincronizarQuery() {
   })
 }
 
-function guardarSeleccion(vuelo) {
+function cambiarTipoViajeBusqueda(nuevoTipo) {
+  if (tipoViaje.value !== nuevoTipo) clearSeleccionTramosBusqueda()
+  tipoViaje.value = nuevoTipo
+  if (nuevoTipo === 'SOLO_IDA') form.value.regreso = ''
+  sincronizarQuery()
+}
+
+function clearSeleccionTramosBusqueda() {
+  seleccionIda.value = null
+  seleccionRegreso.value = null
+  vueloExpandido.value = null
+  vueloExpandidoRegreso.value = null
+}
+
+function guardarSeleccionSoloIda(vuelo) {
+  reserva.setTipoViaje('SOLO_IDA')
+  reserva.setVueloRegreso(null)
   reserva.setVuelo({
     ...vuelo,
     pasajeros: Number(form.value.pasajeros),
     clase: form.value.clase,
-    tipoViaje: tipoViaje.value,
-    fechaRegreso: tipoViaje.value === 'IDA_VUELTA' ? form.value.regreso : null,
+    tipoViaje: 'SOLO_IDA',
+    fechaRegreso: null,
   })
 }
 
@@ -290,16 +339,59 @@ function toggleDetalles(vueloId) {
   vueloExpandido.value = vueloExpandido.value === vueloId ? null : vueloId
 }
 
+function toggleDetallesRegreso(vueloId) {
+  vueloExpandidoRegreso.value = vueloExpandidoRegreso.value === vueloId ? null : vueloId
+}
+
 function reservar(vuelo) {
-  guardarSeleccion(vuelo)
+  guardarSeleccionSoloIda(vuelo)
   router.push({ name: 'detalle-vuelo', params: { id: vuelo.idVuelo }, query: route.query })
+}
+
+function elegirVueloIda(vuelo) {
+  seleccionIda.value = vuelo
+}
+
+function elegirVueloRegreso(vuelo) {
+  seleccionRegreso.value = vuelo
+}
+
+const roundTripListo = computed(() => Boolean(seleccionIda.value && seleccionRegreso.value))
+
+function continuarIdaYVuelta() {
+  if (!roundTripListo.value) return
+  reserva.setTipoViaje('IDA_VUELTA')
+  reserva.setVuelo({
+    ...seleccionIda.value,
+    pasajeros: Number(form.value.pasajeros),
+    clase: form.value.clase,
+    tipoViaje: 'IDA_VUELTA',
+    fechaRegreso: form.value.regreso,
+  })
+  reserva.setVueloRegreso({
+    ...seleccionRegreso.value,
+    pasajeros: Number(form.value.pasajeros),
+    clase: form.value.clase,
+  })
+  router.push({ name: 'datos-pasajeros' })
 }
 
 const resumenBusqueda = computed(() => ({
   origen: nombreAeropuerto(form.value.origen) || 'Origen',
   destino: nombreAeropuerto(form.value.destino) || 'Destino',
   fecha: form.value.salida ? fechaLegible(form.value.salida) : 'Fecha',
+  regreso:
+    tipoViaje.value === 'IDA_VUELTA' && form.value.regreso ? fechaLegible(form.value.regreso) : null,
 }))
+
+const esVistaDosColumnas = computed(() => puedeBuscar.value && tipoViaje.value === 'IDA_VUELTA')
+
+const listaSoloViaje = computed(() => {
+  if (esVistaDosColumnas.value) return []
+  return puedeBuscar.value && tipoViaje.value === 'SOLO_IDA' ? resultados.value : destacados.value
+})
+
+
 
 watch(
   () => route.query,
@@ -310,7 +402,7 @@ watch(
     form.value.regreso = query.regreso || ''
     form.value.pasajeros = query.pasajeros || '1'
     form.value.clase = query.clase || 'ECONOMICA'
-    tipoViaje.value = query.tipo || 'IDA_VUELTA'
+    tipoViaje.value = query.tipo || 'SOLO_IDA'
   },
 )
 
@@ -335,16 +427,53 @@ onMounted(async () => {
           <span>-</span>
           <span>{{ resumenBusqueda.destino }}</span>
           <span>-</span>
-          <span>{{ resumenBusqueda.fecha }}</span>
+          <span>Ida: {{ resumenBusqueda.fecha }}</span>
+        </div>
+        <div
+          v-if="resumenBusqueda.regreso"
+          class="mt-2 flex flex-wrap gap-x-3 gap-y-2 text-sm text-text-muted"
+        >
+          <span>{{ resumenBusqueda.destino }}</span>
+          <span>-</span>
+          <span>{{ resumenBusqueda.origen }}</span>
+          <span>-</span>
+          <span>Vuelta: {{ resumenBusqueda.regreso }}</span>
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-2">
+          <button
+            type="button"
+            class="rounded-full px-4 py-2 text-sm font-semibold transition-colors"
+            :class="
+              tipoViaje === 'SOLO_IDA'
+                ? 'bg-[#d71920] text-white shadow-md shadow-red-200'
+                : 'border border-red-200 bg-white text-text-main hover:bg-red-50'
+            "
+            @click="cambiarTipoViajeBusqueda('SOLO_IDA')"
+          >
+            Solo ida
+          </button>
+          <button
+            type="button"
+            class="rounded-full px-4 py-2 text-sm font-semibold transition-colors"
+            :class="
+              tipoViaje === 'IDA_VUELTA'
+                ? 'bg-[#d71920] text-white shadow-md shadow-red-200'
+                : 'border border-red-200 bg-white text-text-main hover:bg-red-50'
+            "
+            @click="cambiarTipoViajeBusqueda('IDA_VUELTA')"
+          >
+            Ida y vuelta
+          </button>
         </div>
 
         <form
-          class="mt-8 grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_220px_160px]"
+          class="mt-6 flex flex-wrap items-end gap-4"
           @submit.prevent="sincronizarQuery(); buscar()"
         >
           <select
             v-model="form.origen"
-            class="rounded-2xl border border-red-100 bg-red-50/40 px-4 py-3 text-text-main outline-none transition focus:border-[#d71920] focus:ring-4 focus:ring-red-100"
+            class="min-w-[160px] flex-1 rounded-2xl border border-red-100 bg-red-50/40 px-4 py-3 text-text-main outline-none transition focus:border-[#d71920] focus:ring-4 focus:ring-red-100"
           >
             <option value="">Origen</option>
             <option v-for="opcion in opcionesAeropuertos" :key="opcion.valor" :value="opcion.valor">
@@ -354,7 +483,7 @@ onMounted(async () => {
 
           <select
             v-model="form.destino"
-            class="rounded-2xl border border-red-100 bg-red-50/40 px-4 py-3 text-text-main outline-none transition focus:border-[#d71920] focus:ring-4 focus:ring-red-100"
+            class="min-w-[160px] flex-1 rounded-2xl border border-red-100 bg-red-50/40 px-4 py-3 text-text-main outline-none transition focus:border-[#d71920] focus:ring-4 focus:ring-red-100"
           >
             <option value="">Destino</option>
             <option v-for="opcion in opcionesAeropuertos" :key="opcion.valor" :value="opcion.valor">
@@ -365,12 +494,36 @@ onMounted(async () => {
           <input
             v-model="form.salida"
             type="date"
-            class="rounded-2xl border border-red-100 bg-red-50/40 px-4 py-3 text-text-main outline-none transition focus:border-[#d71920] focus:ring-4 focus:ring-red-100"
+            class="min-w-[150px] flex-1 rounded-2xl border border-red-100 bg-red-50/40 px-4 py-3 text-text-main outline-none transition focus:border-[#d71920] focus:ring-4 focus:ring-red-100"
+          />
+
+          <input
+            v-if="tipoViaje === 'IDA_VUELTA'"
+            v-model="form.regreso"
+            type="date"
+            required
+            class="min-w-[150px] flex-1 rounded-2xl border border-red-100 bg-red-50/40 px-4 py-3 text-text-main outline-none transition focus:border-[#d71920] focus:ring-4 focus:ring-red-100"
+          />
+          <select
+            v-model="form.clase"
+            class="min-w-[130px] flex-1 rounded-2xl border border-red-100 bg-red-50/40 px-4 py-3 text-text-main outline-none transition focus:border-[#d71920] focus:ring-4 focus:ring-red-100 sm:max-w-[180px]"
+          >
+            <option value="ECONOMICA">Economica</option>
+            <option value="EJECUTIVA">Ejecutiva</option>
+            <option value="PRIMERA">Primera</option>
+          </select>
+          <input
+            v-model="form.pasajeros"
+            type="number"
+            min="1"
+            max="9"
+            title="Pasajeros"
+            class="min-w-[100px] w-24 rounded-2xl border border-red-100 bg-red-50/40 px-4 py-3 text-text-main outline-none transition focus:border-[#d71920] focus:ring-4 focus:ring-red-100"
           />
 
           <button
             type="submit"
-            class="w-full rounded-2xl bg-[#d71920] px-6 py-3 font-semibold text-white shadow-lg shadow-red-200 transition-colors hover:bg-[#b9151b]"
+            class="min-w-[140px] flex-1 rounded-2xl bg-[#d71920] px-6 py-3 font-semibold text-white shadow-lg shadow-red-200 transition-colors hover:bg-[#b9151b] sm:flex-none"
           >
             Buscar
           </button>
@@ -393,7 +546,94 @@ onMounted(async () => {
           <p class="mt-4 text-text-muted">Cargando vuelos destacados...</p>
         </div>
 
-        <div v-else-if="!listaVisible.length" class="rounded-[28px] bg-white p-10 text-center shadow-sm">
+        <div v-else-if="esVistaDosColumnas" class="relative pb-32">
+          <div class="grid gap-8 xl:grid-cols-2">
+            <div class="min-w-0 space-y-4">
+              <div
+                class="rounded-2xl border border-red-100 bg-white/90 px-4 py-3 shadow-sm backdrop-blur-sm xl:sticky xl:top-20 xl:z-10"
+              >
+                <p class="text-xs font-semibold uppercase tracking-wider text-[#d71920]">Vuelos de ida</p>
+                <p class="text-sm text-text-muted">
+                  {{ resumenBusqueda.origen }} · {{ resumenBusqueda.destino }} · {{ resumenBusqueda.fecha }}
+                </p>
+              </div>
+              <div v-if="!resultados.length" class="rounded-[28px] bg-white p-8 text-center text-text-muted shadow-sm">
+                No hay vuelos de ida programados para esta fecha y ruta.
+              </div>
+              <div v-else class="space-y-5">
+                <TarjetaVueloBusqueda
+                  v-for="vuelo in resultados"
+                  :key="'ida-' + vuelo.idVuelo"
+                  :vuelo="vuelo"
+                  :seleccionado="seleccionIda?.idVuelo === vuelo.idVuelo"
+                  :expandido="vueloExpandido === vuelo.idVuelo"
+                  :etiqueta-accion="seleccionIda?.idVuelo === vuelo.idVuelo ? 'Seleccionado' : 'Elegir ida'"
+                  @elegir="elegirVueloIda"
+                  @toggle-detalles="toggleDetalles"
+                />
+              </div>
+            </div>
+
+            <div class="min-w-0 space-y-4">
+              <div
+                class="rounded-2xl border border-red-100 bg-white/90 px-4 py-3 shadow-sm backdrop-blur-sm xl:sticky xl:top-20 xl:z-10"
+              >
+                <p class="text-xs font-semibold uppercase tracking-wider text-[#d71920]">Vuelos de vuelta</p>
+                <p class="text-sm text-text-muted">
+                  {{ resumenBusqueda.destino }} · {{ resumenBusqueda.origen }} · {{ resumenBusqueda.regreso }}
+                </p>
+              </div>
+              <div v-if="!resultadosRegreso.length" class="rounded-[28px] bg-white p-8 text-center text-text-muted shadow-sm">
+                No hay vuelos de vuelta programados para esta fecha y ruta.
+              </div>
+              <div v-else class="space-y-5">
+                <TarjetaVueloBusqueda
+                  v-for="vuelo in resultadosRegreso"
+                  :key="'vuel-' + vuelo.idVuelo"
+                  :vuelo="vuelo"
+                  :seleccionado="seleccionRegreso?.idVuelo === vuelo.idVuelo"
+                  :expandido="vueloExpandidoRegreso === vuelo.idVuelo"
+                  :etiqueta-accion="
+                    seleccionRegreso?.idVuelo === vuelo.idVuelo ? 'Seleccionado' : 'Elegir vuelta'
+                  "
+                  @elegir="elegirVueloRegreso"
+                  @toggle-detalles="toggleDetallesRegreso"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="fixed bottom-0 left-0 right-0 z-40 border-t border-red-100 bg-white/95 px-4 py-4 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] backdrop-blur-md pb-[calc(1rem+env(safe-area-inset-bottom))]"
+          >
+            <div class="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+              <div class="min-w-0 space-y-1 text-sm text-text-muted">
+                <p v-if="seleccionIda" class="text-text-main">
+                  <span class="font-semibold text-[#d71920]">Ida:</span>
+                  {{ seleccionIda.numeroVuelo }} · {{ horaLegible(seleccionIda.fechaHoraSalida) }} ·
+                  {{ moneda(seleccionIda.precioBase) }}
+                </p>
+                <p v-else>Elige un vuelo de ida.</p>
+                <p v-if="seleccionRegreso" class="text-text-main">
+                  <span class="font-semibold text-[#d71920]">Vuelta:</span>
+                  {{ seleccionRegreso.numeroVuelo }} · {{ horaLegible(seleccionRegreso.fechaHoraSalida) }} ·
+                  {{ moneda(seleccionRegreso.precioBase) }}
+                </p>
+                <p v-else>Elige un vuelo de vuelta.</p>
+              </div>
+              <button
+                type="button"
+                class="shrink-0 rounded-2xl bg-[#d71920] px-8 py-3 font-semibold text-white shadow-lg shadow-red-200 transition-colors hover:bg-[#b9151b] disabled:cursor-not-allowed disabled:opacity-45"
+                :disabled="!roundTripListo"
+                @click="continuarIdaYVuelta"
+              >
+                Continuar con ida y vuelta
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else-if="!listaSoloViaje.length" class="rounded-[28px] bg-white p-10 text-center shadow-sm">
           <p class="text-lg font-semibold text-navy">
             {{ puedeBuscar ? 'No encontramos vuelos programados para esa busqueda.' : 'Todavia no hay vuelos destacados para mostrar.' }}
           </p>
@@ -403,138 +643,18 @@ onMounted(async () => {
         </div>
 
         <div v-else class="space-y-5">
-          <article
-            v-for="vuelo in listaVisible"
+          <TarjetaVueloBusqueda
+            v-for="vuelo in listaSoloViaje"
             :key="vuelo.idVuelo"
-            class="overflow-hidden rounded-[28px] border border-red-100 bg-white shadow-sm shadow-red-100/50 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-red-100"
-          >
-            <div class="grid gap-5 border-l-8 border-[#d71920] px-6 py-5 lg:grid-cols-[240px_1fr_210px] lg:items-center">
-              <div class="space-y-6">
-                <div class="flex items-start gap-3">
-                  <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#d71920] text-white">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 16l20-5-8 8-2.5-5.5L6 11l-4-1 20-5-5 20-3.5-7L2 16z" />
-                    </svg>
-                  </div>
-                  <div class="min-w-0">
-                    <p class="text-lg font-semibold leading-tight text-[#1f1f1f]">NachoFlights</p>
-                    <p class="mt-1 text-sm text-text-muted">{{ vuelo.numeroVuelo }} - {{ vuelo.aeronave }}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <p class="text-[2.15rem] font-light leading-none text-[#1f1f1f]">{{ horaLegible(vuelo.fechaHoraSalida) }}</p>
-                  <p class="mt-3 text-[1.3rem] font-semibold leading-none text-[#d71920]">{{ vuelo.codigoOrigen }}</p>
-                  <p class="mt-2 text-sm text-text-muted">{{ vuelo.ciudadOrigen }}</p>
-                </div>
-              </div>
-
-              <div class="grid items-center gap-4 md:grid-cols-[1fr_120px]">
-                <div class="text-center">
-                  <p class="text-sm text-text-muted">{{ duracionLegible(vuelo.duracionMin) }}</p>
-                  <div class="mx-auto mt-4 flex max-w-[360px] items-center gap-3">
-                    <span class="h-px flex-1 bg-red-200" />
-                    <svg class="h-5 w-5 text-[#d71920]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 16l20-5-8 8-2.5-5.5L6 11l-4-1 20-5-5 20-3.5-7L2 16z" />
-                    </svg>
-                    <span class="h-px flex-1 bg-red-200" />
-                  </div>
-                  <p class="mt-4 text-sm font-medium text-emerald-600">
-                    {{ vuelo.escalas === 0 ? 'Directo' : `${vuelo.escalas} escalas` }}
-                  </p>
-                </div>
-
-                <div class="text-left md:text-right">
-                  <p class="text-[2.15rem] font-light leading-none text-[#1f1f1f]">{{ horaLegible(vuelo.fechaHoraLlegada) }}</p>
-                  <p class="mt-3 text-[1.3rem] font-semibold leading-none text-[#d71920]">{{ vuelo.codigoDestino }}</p>
-                  <p class="mt-2 text-sm text-text-muted">{{ vuelo.ciudadDestino }}</p>
-                </div>
-              </div>
-
-              <div class="border-l border-red-100 pl-6">
-                <p class="text-right text-sm text-text-muted">Desde</p>
-                <p class="text-right text-[2.85rem] font-light leading-none text-[#d71920]">{{ moneda(vuelo.precioBase) }}</p>
-                <p class="mt-2 text-right text-sm text-text-muted">por persona</p>
-                <button
-                  type="button"
-                  class="mt-5 w-full rounded-2xl bg-[#d71920] px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-[#b9151b]"
-                  @click="reservar(vuelo)"
-                >
-                  Reservar
-                </button>
-                <button
-                  type="button"
-                  class="mt-4 flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#d71920] transition-colors hover:text-[#8f1116]"
-                  @click="toggleDetalles(vuelo.idVuelo)"
-                >
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Ver detalles</span>
-                  <svg
-                    class="h-4 w-4 transition-transform"
-                    :class="{ 'rotate-180': vueloExpandido === vuelo.idVuelo }"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <Transition name="expand">
-              <div v-if="vueloExpandido === vuelo.idVuelo" class="border-t border-red-100 bg-red-50/50 px-6 py-8 lg:px-8">
-                <div class="grid gap-8 md:grid-cols-3">
-                  <div>
-                    <h3 class="text-2xl font-semibold text-navy">Servicios Incluidos</h3>
-                    <ul class="mt-4 space-y-3 text-text-muted">
-                      <li class="text-emerald-600">- Equipaje de mano (10kg)</li>
-                      <li class="text-amber-600">- Equipaje de bodega (opcional)</li>
-                      <li class="text-emerald-600">- Snack y bebida</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 class="text-2xl font-semibold text-navy">Informacion Adicional</h3>
-                    <div class="mt-4 space-y-3 text-text-muted">
-                      <p>Aeronave: {{ vuelo.aeronave }}</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 class="text-2xl font-semibold text-navy">Politicas</h3>
-                    <div class="mt-4 space-y-3 text-text-muted">
-                      <p>Check-in: Online o aeropuerto</p>
-                      <p>3 horas antes en el aeropuerto</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Transition>
-          </article>
+            :vuelo="vuelo"
+            :expandido="vueloExpandido === vuelo.idVuelo"
+            etiqueta-accion="Reservar"
+            es-reserva-directa
+            @reservar="reservar"
+            @toggle-detalles="toggleDetalles"
+          />
         </div>
       </div>
     </div>
   </section>
 </template>
-
-<style scoped>
-.expand-enter-active,
-.expand-leave-active {
-  transition: all 0.22s ease;
-}
-
-.expand-enter-from,
-.expand-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
-
-.expand-enter-to,
-.expand-leave-from {
-  max-height: 360px;
-  opacity: 1;
-}
-</style>

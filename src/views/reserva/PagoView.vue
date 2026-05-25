@@ -69,9 +69,66 @@ const registerForm = ref({
 const erroresRegistro = ref({})
 
 const vuelo = computed(() => reserva.vuelo)
+const vueloRegreso = computed(() => reserva.vueloRegreso)
 const pasajeros = computed(() => reserva.pasajeros || [])
 const asientos = computed(() => reserva.asientos || [])
+const asientosRegreso = computed(() => reserva.asientosRegreso || [])
 const equipaje = computed(() => reserva.equipaje || [])
+const equipajeRegreso = computed(() => reserva.equipajeRegreso || [])
+const esComboIdaVuelta = computed(() => reserva.esIdaYVuelta)
+
+const totalBodega = computed(() =>
+  pasajeros.value.reduce((acc, _, indice) => {
+    const ida = equipaje.value[indice]?.equipajeBodega ? COSTO_BODEGA : 0
+    const reg =
+      esComboIdaVuelta.value && equipajeRegreso.value[indice]?.equipajeBodega ? COSTO_BODEGA : 0
+    return acc + ida + reg
+  }, 0),
+)
+
+const subtotalVuelo = computed(() => Number(reserva.subtotal || 0))
+
+const subtotalGeneral = computed(() => subtotalVuelo.value + totalBodega.value)
+const ivaGeneral = computed(() => Number((subtotalGeneral.value * IVA).toFixed(2)))
+const totalPagar = computed(() => Number((subtotalGeneral.value + ivaGeneral.value + CARGO_SERVICIO).toFixed(2)))
+
+const itemsPago = computed(() =>
+  pasajeros.value.map((pasajero, indice) => {
+    const asientoIda = asientos.value[indice] || null
+    const asientoRet = esComboIdaVuelta.value ? asientosRegreso.value[indice] || null : null
+    const bagIda = equipaje.value[indice] || null
+    const bagRegreso = equipajeRegreso.value[indice] || null
+
+    const subIda =
+      Number(vuelo.value?.precioBase || 0) + Number(asientoIda?.precioExtra || 0)
+    const subVuelta =
+      esComboIdaVuelta.value
+        ? Number(vueloRegreso.value?.precioBase || 0) + Number(asientoRet?.precioExtra || 0)
+        : 0
+
+    const subtotalLinea = subIda + subVuelta
+
+    const bodegaLineaCosto =
+      (bagIda?.equipajeBodega ? COSTO_BODEGA : 0) +
+      (esComboIdaVuelta.value && bagRegreso?.equipajeBodega ? COSTO_BODEGA : 0)
+
+    return {
+      indice,
+      nombre:
+        [pasajero.nombre_pasajero, pasajero.apellido_pasajero].filter(Boolean).join(' ') ||
+        `Pasajero ${indice + 1}`,
+      pasajero,
+      asiento: asientoIda,
+      asientoRegreso: esComboIdaVuelta.value ? asientoRet : null,
+      equipaje: bagIda,
+      equipajeRegreso: esComboIdaVuelta.value ? bagRegreso : null,
+      bodegaLineaCosto,
+      subtotalLinea,
+      ivaLinea: Number((subtotalLinea * IVA).toFixed(2)),
+      totalLinea: Number((subtotalLinea * (1 + IVA)).toFixed(2)),
+    }
+  }),
+)
 
 const opcionesPaises = computed(() =>
   catalogos.paises.map((pais) => ({
@@ -99,41 +156,6 @@ const opcionesGenero = [
   { valor: 'FEMENINO', etiqueta: 'Femenino' },
   { valor: 'OTRO', etiqueta: 'Otro' },
 ]
-
-const totalBodega = computed(() =>
-  equipaje.value.reduce((acc, item) => acc + (item.equipajeBodega ? COSTO_BODEGA : 0), 0),
-)
-
-const subtotalVuelo = computed(() =>
-  asientos.value.reduce((acc, asiento) => {
-    const base = Number(vuelo.value?.precioBase || 0)
-    const extra = Number(asiento?.precioExtra || 0)
-    return acc + base + extra
-  }, 0),
-)
-
-const subtotalGeneral = computed(() => subtotalVuelo.value + totalBodega.value)
-const ivaGeneral = computed(() => Number((subtotalGeneral.value * IVA).toFixed(2)))
-const totalPagar = computed(() => Number((subtotalGeneral.value + ivaGeneral.value + CARGO_SERVICIO).toFixed(2)))
-
-const itemsPago = computed(() =>
-  pasajeros.value.map((pasajero, indice) => {
-    const asiento = asientos.value[indice] || null
-    const bag = equipaje.value[indice] || null
-    const subtotalLinea = Number(vuelo.value?.precioBase || 0) + Number(asiento?.precioExtra || 0)
-
-    return {
-      indice,
-      nombre: [pasajero.nombre_pasajero, pasajero.apellido_pasajero].filter(Boolean).join(' ') || `Pasajero ${indice + 1}`,
-      pasajero,
-      asiento,
-      equipaje: bag,
-      subtotalLinea,
-      ivaLinea: Number((subtotalLinea * IVA).toFixed(2)),
-      totalLinea: Number((subtotalLinea * (1 + IVA)).toFixed(2)),
-    }
-  }),
-)
 
 function moneda(valor) {
   return new Intl.NumberFormat('es-EC', {
@@ -339,6 +361,104 @@ function normalizarDetallesReserva(data) {
   }))
 }
 
+function subtotalLineaTramoReserva(vueloRef, asientoSeleccion) {
+  const baseTarifa = Number(vueloRef?.precioBase || 0)
+  const extra = Number(asientoSeleccion?.precioExtra || 0)
+  return baseTarifa + extra
+}
+
+async function crearReservaYPagarTramo({
+  idCliente,
+  pasajerosCreados,
+  vueloTramo,
+  asientosTramo,
+  equipajeTramo,
+  observaciones,
+}) {
+  const netoTramo = pasajerosCreados.reduce(
+    (acc, pc) => acc + subtotalLineaTramoReserva(vueloTramo, asientosTramo[pc.tempIndex]),
+    0,
+  )
+
+  const idVueloReserva = Number(vueloTramo?.idVuelo ?? vueloTramo?.id_vuelo ?? vueloTramo?.id ?? 0)
+
+  const detallesPayload = pasajerosCreados.map((pc) => {
+    const ast = asientosTramo[pc.tempIndex]
+    const sl = subtotalLineaTramoReserva(vueloTramo, ast)
+    const iv = Number((sl * IVA).toFixed(2))
+    const tl = Number((sl * (1 + IVA)).toFixed(2))
+    return {
+      idPasajero: pc.idPasajero,
+      idAsiento: ast?.idAsiento,
+      subtotalLinea: sl,
+      valorIvaLinea: iv,
+      totalLinea: tl,
+    }
+  })
+
+  const payload = {
+    idCliente,
+    idVuelo: idVueloReserva,
+    fechaInicio: vueloTramo.fechaHoraSalida,
+    fechaFin: vueloTramo.fechaHoraLlegada,
+    subtotalReserva: netoTramo,
+    valorIva: Number((netoTramo * IVA).toFixed(2)),
+    totalReserva: Number((netoTramo * (1 + IVA)).toFixed(2)),
+    origenCanalReserva: 'BOOKING',
+    contactoEmail: pasajeros.value[0]?.email_contacto_pasajero || registerForm.value.correo || auth.usuario?.correo,
+    contactoTelefono: pasajeros.value[0]?.telefono_contacto_pasajero || registerForm.value.telefono,
+    observaciones,
+    detalles: detallesPayload,
+  }
+
+  const reservaResp = await createReservaApi(payload)
+  const reservaReal = reservaResp.data?.data || {}
+  const idReserva = reservaReal.idReserva ?? reservaReal.id_reserva ?? reservaReal.id
+
+  if (!idReserva) throw new Error('No se pudo obtener el id_reserva de la reserva creada.')
+
+  const detalles = normalizarDetallesReserva(reservaResp.data?.data || reservaResp.data)
+
+  estadoProceso.value = 'Procesando pago...'
+  const equipajePayload = []
+
+  for (const item of itemsPago.value) {
+    const pc = pasajerosCreados[item.indice]
+    const ast = asientosTramo[item.indice]
+    const detalle =
+      detalles.find(
+        (d) =>
+          String(d.idPasajero) === String(pc?.idPasajero) && String(d.idAsiento) === String(ast?.idAsiento),
+      ) || detalles[item.indice]
+
+    if (!detalle?.idDetalle) throw new Error('No se pudo asociar el id_detalle para el equipaje.')
+
+    if (equipajeTramo[item.indice]?.equipajeBodega) {
+      equipajePayload.push({
+        idDetalle: detalle.idDetalle,
+        tipo: 'BODEGA',
+        pesoKg: 23,
+        descripcionEquipaje: 'Maleta de bodega',
+      })
+    }
+  }
+
+  await pagarReservaApi(idReserva, {
+    cargoServicio: CARGO_SERVICIO,
+    equipaje: equipajePayload,
+  })
+
+  return {
+    idReserva,
+    numeroVuelo: vueloTramo.numeroVuelo,
+    codigoOrigen: vueloTramo.codigoOrigen,
+    codigoDestino: vueloTramo.codigoDestino,
+    fechaHoraSalida: vueloTramo.fechaHoraSalida,
+    fechaHoraLlegada: vueloTramo.fechaHoraLlegada,
+    subtotalTramo: netoTramo,
+  }
+}
+
 function validarRegistro() {
   const e = {}
   const correo = registerForm.value.correo.trim()
@@ -508,95 +628,86 @@ async function ejecutarCompraReal() {
       pasajerosCreados.push({
         tempIndex: item.indice,
         idPasajero,
-        idAsiento: item.asiento?.idAsiento,
-        subtotalLinea: item.subtotalLinea,
-        ivaLinea: item.ivaLinea,
-        totalLinea: item.totalLinea,
       })
     }
 
-    estadoProceso.value = 'Generando reserva...'
-    const idVueloReserva = Number(vuelo.value?.idVuelo ?? vuelo.value?.id_vuelo ?? vuelo.value?.id ?? 0)
-    const payload = {
+    estadoProceso.value = 'Generando reserva (ida)...'
+    const idaInfo = await crearReservaYPagarTramo({
       idCliente,
-      idVuelo: idVueloReserva,
-      fechaInicio: vuelo.value.fechaHoraSalida,
-      fechaFin: vuelo.value.fechaHoraLlegada,
-      subtotalReserva: subtotalVuelo.value,
-      valorIva: Number((subtotalVuelo.value * IVA).toFixed(2)),
-      totalReserva: Number((subtotalVuelo.value * (1 + IVA)).toFixed(2)),
-      origenCanalReserva: 'BOOKING',
-      contactoEmail: pasajeros.value[0]?.email_contacto_pasajero || registerForm.value.correo || auth.usuario?.correo,
-      contactoTelefono: pasajeros.value[0]?.telefono_contacto_pasajero || registerForm.value.telefono,
-      observaciones: 'Reserva web',
-      detalles: pasajerosCreados.map((item) => ({
-        idPasajero: item.idPasajero,
-        idAsiento: item.idAsiento,
-        subtotalLinea: item.subtotalLinea,
-        valorIvaLinea: item.ivaLinea,
-        totalLinea: item.totalLinea,
-      })),
-    }
-
-    const reservaResp = await createReservaApi(payload)
-    const reservaReal = reservaResp.data?.data || {}
-    const idReserva = reservaReal.idReserva ?? reservaReal.id_reserva ?? reservaReal.id
-
-    if (!idReserva) throw new Error('No se pudo obtener el id_reserva de la reserva creada.')
-
-    const detalles = normalizarDetallesReserva(reservaResp.data?.data || reservaResp.data)
-
-    estadoProceso.value = 'Procesando pago...'
-    const equipajePayload = []
-
-    for (const item of itemsPago.value) {
-      const pasajeroCreado = pasajerosCreados[item.indice]
-      const detalle =
-        detalles.find(
-          (d) =>
-            String(d.idPasajero) === String(pasajeroCreado?.idPasajero) &&
-            String(d.idAsiento) === String(item.asiento?.idAsiento),
-        ) || detalles[item.indice]
-
-      if (!detalle?.idDetalle) throw new Error('No se pudo asociar el id_detalle para el equipaje.')
-
-      if (item.equipaje?.equipajeBodega) {
-        equipajePayload.push({
-          idDetalle: detalle.idDetalle,
-          tipo: 'BODEGA',
-          pesoKg: 23,
-          descripcionEquipaje: 'Maleta de bodega',
-        })
-      }
-    }
-
-    await pagarReservaApi(idReserva, {
-      cargoServicio: CARGO_SERVICIO,
-      equipaje: equipajePayload,
+      pasajerosCreados,
+      vueloTramo: vuelo.value,
+      asientosTramo: asientos.value,
+      equipajeTramo: equipaje.value,
+      observaciones: esComboIdaVuelta.value ? 'Reserva web · ida' : 'Reserva web',
     })
 
-    const payloadConfirmacion = {
-      idReserva,
-      numeroVuelo: vuelo.value.numeroVuelo,
-      codigoReserva: vuelo.value.numeroVuelo,
-      fecha: vuelo.value.fechaHoraSalida,
-      horario: `${horaLegible(vuelo.value.fechaHoraSalida)} - ${horaLegible(vuelo.value.fechaHoraLlegada)}`,
-      ruta: `${vuelo.value.codigoOrigen || ''} - ${vuelo.value.codigoDestino || ''}`.trim(),
-      tarifaVuelo: subtotalVuelo.value,
-      equipajeBodegaTotal: totalBodega.value,
-      subtotalGeneral: subtotalGeneral.value,
-      ivaGeneral: ivaGeneral.value,
-      cargoServicio: CARGO_SERVICIO,
-      totalPagado: totalPagar.value,
-      pasajeros: itemsPago.value.map((item) => ({
-        nombre: item.nombre,
-        documento: item.pasajero.numero_documento_pasajero,
-        asiento: item.asiento?.numeroAsiento || '',
-        email: item.pasajero.email_contacto_pasajero || '',
-        telefono: item.pasajero.telefono_contacto_pasajero || '',
-        equipajeBodega: Boolean(item.equipaje?.equipajeBodega),
-      })),
+    let vueltaInfo = null
+    if (esComboIdaVuelta.value) {
+      estadoProceso.value = 'Generando reserva (vuelta)...'
+      vueltaInfo = await crearReservaYPagarTramo({
+        idCliente,
+        pasajerosCreados,
+        vueloTramo: vueloRegreso.value,
+        asientosTramo: asientosRegreso.value,
+        equipajeTramo: equipajeRegreso.value,
+        observaciones: 'Reserva web · vuelta',
+      })
     }
+
+    const payloadConfirmacion = esComboIdaVuelta.value
+      ? {
+          modo: 'IDA_VUELTA',
+          idReservaIda: idaInfo.idReserva,
+          idReservaVuelta: vueltaInfo.idReserva,
+          codigoReserva: `${idaInfo.numeroVuelo} · ${vueltaInfo.numeroVuelo}`,
+          numeroVuelo: `${idaInfo.numeroVuelo} / ${vueltaInfo.numeroVuelo}`,
+          fecha: idaInfo.fechaHoraSalida,
+          horario: `${horaLegible(idaInfo.fechaHoraSalida)} - ${horaLegible(idaInfo.fechaHoraLlegada)}`,
+          horarioVuelta: `${horaLegible(vueltaInfo.fechaHoraSalida)} - ${horaLegible(vueltaInfo.fechaHoraLlegada)}`,
+          rutaIda: `${idaInfo.codigoOrigen || ''} - ${idaInfo.codigoDestino || ''}`.trim(),
+          rutaVuelta: `${vueltaInfo.codigoOrigen || ''} - ${vueltaInfo.codigoDestino || ''}`.trim(),
+          tarifaVuelo: subtotalVuelo.value,
+          equipajeBodegaTotal: totalBodega.value,
+          subtotalGeneral: subtotalGeneral.value,
+          ivaGeneral: ivaGeneral.value,
+          cargoServicio: CARGO_SERVICIO,
+          totalPagado: totalPagar.value,
+          pasajeros: itemsPago.value.map((item) => ({
+            nombre: item.nombre,
+            documento: item.pasajero.numero_documento_pasajero,
+            asiento: item.asiento?.numeroAsiento || '',
+            asientoRegreso: item.asientoRegreso?.numeroAsiento || '',
+            email: item.pasajero.email_contacto_pasajero || '',
+            telefono: item.pasajero.telefono_contacto_pasajero || '',
+            equipajeBodega: Boolean(item.equipaje?.equipajeBodega),
+            equipajeBodegaRegreso: Boolean(item.equipajeRegreso?.equipajeBodega),
+          })),
+        }
+      : {
+          modo: 'SOLO_IDA',
+          idReserva: idaInfo.idReserva,
+          numeroVuelo: vuelo.value.numeroVuelo,
+          codigoReserva: vuelo.value.numeroVuelo,
+          fecha: vuelo.value.fechaHoraSalida,
+          horario: `${horaLegible(vuelo.value.fechaHoraSalida)} - ${horaLegible(vuelo.value.fechaHoraLlegada)}`,
+          ruta: `${vuelo.value.codigoOrigen || ''} - ${vuelo.value.codigoDestino || ''}`.trim(),
+          tarifaVuelo: subtotalVuelo.value,
+          equipajeBodegaTotal: totalBodega.value,
+          subtotalGeneral: subtotalGeneral.value,
+          ivaGeneral: ivaGeneral.value,
+          cargoServicio: CARGO_SERVICIO,
+          totalPagado: totalPagar.value,
+          pasajeros: itemsPago.value.map((item) => ({
+            nombre: item.nombre,
+            documento: item.pasajero.numero_documento_pasajero,
+            asiento: item.asiento?.numeroAsiento || '',
+            asientoRegreso: '',
+            email: item.pasajero.email_contacto_pasajero || '',
+            telefono: item.pasajero.telefono_contacto_pasajero || '',
+            equipajeBodega: Boolean(item.equipaje?.equipajeBodega),
+            equipajeBodegaRegreso: false,
+          })),
+        }
 
     sessionStorage.setItem(KEY_CONFIRMACION, JSON.stringify(payloadConfirmacion))
     guardarPortalReserva(payloadConfirmacion)
@@ -644,7 +755,16 @@ onMounted(async () => {
     return
   }
 
-  if (!asientos.value.length) {
+
+  const asientosRetornoListos =
+    !esComboIdaVuelta.value ||
+    pasajeros.value.every((_, indice) => Boolean(asientosRegreso.value[indice]?.idAsiento))
+
+  const asientosIdaListos = pasajeros.value.every((_, indice) =>
+    Boolean(asientos.value[indice]?.idAsiento),
+  )
+
+  if (!asientosIdaListos || !asientosRetornoListos) {
     router.replace({ name: 'seleccion-asientos' })
     return
   }
@@ -697,6 +817,9 @@ onMounted(async () => {
               <div class="bg-[#d71920] px-6 py-5 text-white">
                 <p class="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">Tu ruta chulla</p>
                 <h2 class="mt-2 text-3xl font-extrabold">{{ vuelo.codigoOrigen || 'Origen' }} → {{ vuelo.codigoDestino || 'Destino' }}</h2>
+                <p v-if="esComboIdaVuelta && vueloRegreso" class="mt-3 rounded-2xl bg-white/10 px-4 py-2 text-sm font-semibold text-white/90">
+                  Vuelta: {{ vueloRegreso.codigoOrigen || 'Origen' }} → {{ vueloRegreso.codigoDestino || 'Destino' }}
+                </p>
               </div>
               <div class="space-y-5 p-6">
                 <div class="grid grid-cols-2 gap-3">
@@ -710,9 +833,18 @@ onMounted(async () => {
                   </div>
                 </div>
                 <div class="rounded-2xl border border-red-100 px-4 py-3">
-                  <p class="text-sm text-text-muted">Vuelo</p>
+                  <p class="text-sm text-text-muted">Vuelo · Ida</p>
                   <p class="mt-1 font-semibold text-navy">{{ vuelo.numeroVuelo }} · {{ fechaLegible(vuelo.fechaHoraSalida) }}</p>
                   <p class="mt-1 text-sm text-text-muted">Duracion: {{ duracionLegible(vuelo.duracionMin) }}</p>
+                </div>
+                <div v-if="esComboIdaVuelta && vueloRegreso" class="rounded-2xl border border-red-100 px-4 py-3">
+                  <p class="text-sm text-text-muted">Vuelo · Vuelta</p>
+                  <p class="mt-1 font-semibold text-navy">
+                    {{ vueloRegreso.numeroVuelo }} · {{ fechaLegible(vueloRegreso.fechaHoraSalida) }}
+                  </p>
+                  <p class="mt-1 text-sm text-text-muted">
+                    Duracion: {{ duracionLegible(vueloRegreso.duracionMin) }}
+                  </p>
                 </div>
                 <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm leading-6 text-text-muted">
                   Pilas: revisa nombres, documentos y asientos antes de confirmar. Despues de pagar ya generamos la reserva real.
@@ -786,8 +918,12 @@ onMounted(async () => {
                       <h3 class="mt-1 text-xl font-extrabold text-navy">{{ item.nombre }}</h3>
                     </div>
                     <div class="rounded-2xl bg-[#d71920] px-4 py-3 text-center text-white">
-                      <p class="text-xs text-white/70">Asiento</p>
-                      <p class="text-2xl font-extrabold">{{ item.asiento?.numeroAsiento || '--' }}</p>
+                      <p class="text-xs text-white/70">Asientos</p>
+                      <p class="text-lg font-extrabold">{{ item.asiento?.numeroAsiento || '--' }}</p>
+                      <p v-if="esComboIdaVuelta" class="mt-2 border-t border-white/25 pt-2 text-[11px] text-white/80">
+                        Ida / Vuelta
+                      </p>
+                      <p v-if="esComboIdaVuelta" class="text-xl font-extrabold">{{ item.asientoRegreso?.numeroAsiento || '--' }}</p>
                     </div>
                   </div>
                   <div class="grid gap-3 p-5 text-sm text-text-muted sm:grid-cols-2">
@@ -804,9 +940,9 @@ onMounted(async () => {
                       <p class="mt-1 font-semibold text-navy">{{ moneda(item.subtotalLinea) }}</p>
                     </div>
                     <div>
-                      <p class="text-xs uppercase tracking-[0.16em]">Bodega</p>
+                      <p class="text-xs uppercase tracking-[0.16em]">Bodega (ida · vuelta)</p>
                       <p class="mt-1 font-semibold text-navy">
-                        {{ item.equipaje?.equipajeBodega ? moneda(COSTO_BODEGA) : 'No agregada' }}
+                        {{ item.bodegaLineaCosto ? moneda(item.bodegaLineaCosto) : 'No agregada' }}
                       </p>
                     </div>
                   </div>

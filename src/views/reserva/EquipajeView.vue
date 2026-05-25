@@ -13,6 +13,8 @@ const equipajeLocal = ref([])
 const vuelo = computed(() => reserva.vuelo)
 const pasajeros = computed(() => reserva.pasajeros || [])
 const asientos = computed(() => reserva.asientos || [])
+const asientosRegreso = computed(() => reserva.asientosRegreso || [])
+const esComboIdaVuelta = computed(() => reserva.esIdaYVuelta)
 
 function moneda(valor) {
   return new Intl.NumberFormat('es-EC', {
@@ -28,42 +30,85 @@ function nombrePasajero(pasajero, indice) {
 
 const itemsEquipaje = computed(() =>
   pasajeros.value.map((pasajero, indice) => {
-    const asiento = asientos.value[indice] || null
     const guardado = equipajeLocal.value[indice] || null
+    const aIda = asientos.value[indice] || null
+    const aReg = esComboIdaVuelta.value ? asientosRegreso.value[indice] || null : null
 
     return {
       pasajeroIndex: indice,
       nombre: nombrePasajero(pasajero, indice),
-      idAsiento: asiento?.idAsiento || null,
-      numeroAsiento: asiento?.numeroAsiento || 'Pendiente',
+      numeroAsientoIda: aIda?.numeroAsiento || 'Pendiente',
+      numeroAsientoRegreso: aReg?.numeroAsiento || '',
       equipajeMano: true,
-      equipajeBodega: Boolean(guardado?.equipajeBodega),
+      equipajeBodegaIda: Boolean(guardado?.equipajeBodegaIda),
+      equipajeBodegaRegreso: Boolean(guardado?.equipajeBodegaRegreso),
       pesoManoKg: 10,
-      pesoBodegaKg: guardado?.equipajeBodega ? 23 : null,
     }
   }),
 )
 
 const totalExtra = computed(() =>
-  itemsEquipaje.value.reduce((total, item) => total + (item.equipajeBodega ? COSTO_BODEGA : 0), 0),
+  itemsEquipaje.value.reduce(
+    (total, item) =>
+      total +
+      (item.equipajeBodegaIda ? COSTO_BODEGA : 0) +
+      (esComboIdaVuelta.value && item.equipajeBodegaRegreso ? COSTO_BODEGA : 0),
+    0,
+  ),
 )
 
 function sincronizarStore() {
-  reserva.setEquipaje(itemsEquipaje.value)
+  const detalleIda = pasajeros.value.map((pasajero, indice) => {
+    const a = asientos.value[indice]
+    const local = equipajeLocal.value[indice] || {}
+    return {
+      pasajeroIndex: indice,
+      nombre: nombrePasajero(pasajero, indice),
+      idAsiento: a?.idAsiento || null,
+      numeroAsiento: a?.numeroAsiento || 'Pendiente',
+      equipajeMano: true,
+      equipajeBodega: Boolean(local.equipajeBodegaIda),
+      pesoManoKg: 10,
+      pesoBodegaKg: local.equipajeBodegaIda ? 23 : null,
+    }
+  })
+
+  reserva.setEquipaje(detalleIda)
+
+  const detalleRegreso = pasajeros.value.map((pasajero, indice) => {
+    const a = asientosRegreso.value[indice]
+    const local = equipajeLocal.value[indice] || {}
+    return {
+      pasajeroIndex: indice,
+      nombre: nombrePasajero(pasajero, indice),
+      idAsiento: a?.idAsiento || null,
+      numeroAsiento: a?.numeroAsiento || 'Pendiente',
+      equipajeMano: true,
+      equipajeBodega: Boolean(local.equipajeBodegaRegreso),
+      pesoManoKg: 10,
+      pesoBodegaKg: local.equipajeBodegaRegreso ? 23 : null,
+    }
+  })
+
+  reserva.setEquipajeRegreso(esComboIdaVuelta.value ? detalleRegreso : [])
 }
 
 function inicializarEquipaje() {
   equipajeLocal.value = pasajeros.value.map((_, indice) => ({
     pasajeroIndex: indice,
-    equipajeBodega: Boolean(reserva.equipaje?.[indice]?.equipajeBodega),
+    equipajeBodegaIda: Boolean(reserva.equipaje?.[indice]?.equipajeBodega),
+    equipajeBodegaRegreso: Boolean(reserva.equipajeRegreso?.[indice]?.equipajeBodega),
   }))
   sincronizarStore()
 }
 
-function setBodega(indice, valor) {
+function setBodega(indice, tramo, valor) {
+  const actual = equipajeLocal.value[indice] || { pasajeroIndex: indice }
   equipajeLocal.value[indice] = {
     pasajeroIndex: indice,
-    equipajeBodega: valor,
+    equipajeBodegaIda: tramo === 'ida' ? valor : Boolean(actual.equipajeBodegaIda),
+    equipajeBodegaRegreso:
+      tramo === 'regreso' ? valor : Boolean(actual.equipajeBodegaRegreso),
   }
   sincronizarStore()
 }
@@ -84,7 +129,13 @@ onMounted(() => {
     return
   }
 
-  if (!asientos.value.length) {
+  const idaLista = pasajeros.value.every((_, i) => Boolean(asientos.value[i]?.idAsiento))
+
+  const regresoLista =
+    !esComboIdaVuelta.value ||
+    pasajeros.value.every((_, i) => Boolean(asientosRegreso.value[i]?.idAsiento))
+
+  if (!idaLista || !regresoLista) {
     router.replace({ name: 'seleccion-asientos' })
     return
   }
@@ -119,7 +170,11 @@ onMounted(() => {
               <div class="flex flex-col gap-2 border-b border-red-100 bg-red-50/70 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 class="text-2xl font-semibold text-navy">{{ item.nombre }}</h2>
-                  <p class="mt-1 text-sm text-text-muted">Asiento seleccionado: {{ item.numeroAsiento }}</p>
+                  <p class="mt-1 text-sm text-text-muted">
+                    Asientos · Ida {{ item.numeroAsientoIda }}
+                    <span v-if="esComboIdaVuelta">
+                      · Vuelta {{ item.numeroAsientoRegreso || '—' }}</span>
+                  </p>
                 </div>
                 <span class="rounded-full bg-white px-3 py-1 text-sm font-medium text-[#d71920]">
                   Pasajero {{ item.pasajeroIndex + 1 }}
@@ -139,43 +194,83 @@ onMounted(() => {
                   </div>
                 </div>
 
-                <div class="rounded-[24px] border border-red-100 p-5">
+                <div class="rounded-[24px] border border-red-100 bg-red-50/40 p-5">
                   <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p class="text-xl font-semibold text-navy">Equipaje de Bodega</p>
-                      <p class="mt-1 text-sm text-text-muted">Maximo 23kg por pasajero.</p>
+                      <p class="text-lg font-semibold text-navy">Bodega · Tramo ida</p>
+                      <p class="mt-1 text-sm text-text-muted">Maleta hasta 23kg.</p>
                     </div>
                     <div class="text-right">
-                      <p class="text-sm text-text-muted">Costo fijo</p>
+                      <p class="text-sm text-text-muted">Costo</p>
                       <p class="text-2xl font-light text-navy">{{ moneda(COSTO_BODEGA) }}</p>
                     </div>
                   </div>
-
-                  <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div class="mt-4 grid gap-3 sm:grid-cols-2">
                     <button
                       type="button"
                       class="rounded-2xl border px-4 py-3 font-semibold transition-colors"
                       :class="
-                        !item.equipajeBodega
+                        !item.equipajeBodegaIda
                           ? 'border-[#111827] bg-[#111827] text-white'
                           : 'border-slate-200 bg-slate-50 text-navy hover:bg-slate-100'
                       "
-                      @click="setBodega(item.pasajeroIndex, false)"
+                      @click="setBodega(item.pasajeroIndex, 'ida', false)"
                     >
-                      No agregar
+                      Ida · sin maleta extra
                     </button>
-
                     <button
                       type="button"
                       class="rounded-2xl border px-4 py-3 font-semibold transition-colors"
                       :class="
-                        item.equipajeBodega
+                        item.equipajeBodegaIda
                           ? 'border-gold bg-gold text-white'
                           : 'border-slate-200 bg-slate-50 text-navy hover:bg-slate-100'
                       "
-                      @click="setBodega(item.pasajeroIndex, true)"
+                      @click="setBodega(item.pasajeroIndex, 'ida', true)"
                     >
-                      Agregar 1 maleta - {{ moneda(COSTO_BODEGA) }}
+                      Ida · maleta · {{ moneda(COSTO_BODEGA) }}
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  v-if="esComboIdaVuelta"
+                  class="rounded-[24px] border border-red-100 bg-red-50/40 p-5"
+                >
+                  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p class="text-lg font-semibold text-navy">Bodega · Tramo vuelta</p>
+                      <p class="mt-1 text-sm text-text-muted">Maleta hasta 23kg por el regreso.</p>
+                    </div>
+                    <div class="text-right">
+                      <p class="text-sm text-text-muted">Costo</p>
+                      <p class="text-2xl font-light text-navy">{{ moneda(COSTO_BODEGA) }}</p>
+                    </div>
+                  </div>
+                  <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      class="rounded-2xl border px-4 py-3 font-semibold transition-colors"
+                      :class="
+                        !item.equipajeBodegaRegreso
+                          ? 'border-[#111827] bg-[#111827] text-white'
+                          : 'border-slate-200 bg-slate-50 text-navy hover:bg-slate-100'
+                      "
+                      @click="setBodega(item.pasajeroIndex, 'regreso', false)"
+                    >
+                      Vuelta · sin maleta extra
+                    </button>
+                    <button
+                      type="button"
+                      class="rounded-2xl border px-4 py-3 font-semibold transition-colors"
+                      :class="
+                        item.equipajeBodegaRegreso
+                          ? 'border-gold bg-gold text-white'
+                          : 'border-slate-200 bg-slate-50 text-navy hover:bg-slate-100'
+                      "
+                      @click="setBodega(item.pasajeroIndex, 'regreso', true)"
+                    >
+                      Vuelta · maleta · {{ moneda(COSTO_BODEGA) }}
                     </button>
                   </div>
                 </div>
@@ -205,13 +300,21 @@ onMounted(() => {
                 <div
                   v-for="item in itemsEquipaje"
                   :key="`resumen-${item.pasajeroIndex}`"
-                  class="flex items-center justify-between border-t border-slate-100 pt-4"
+                  class="space-y-2 border-t border-slate-100 pt-4"
                 >
-                  <div>
-                    <p class="font-medium text-navy">{{ item.nombre }}</p>
-                    <p class="text-sm text-text-muted">{{ item.equipajeBodega ? '1 maleta de bodega' : 'Sin bodega extra' }}</p>
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="font-medium text-navy">{{ item.nombre }}</div>
                   </div>
-                  <span class="font-semibold text-navy">{{ item.equipajeBodega ? moneda(COSTO_BODEGA) : moneda(0) }}</span>
+                  <div class="flex items-center justify-between text-sm">
+                    <span class="text-text-muted">Ida</span>
+                    <span class="font-semibold text-navy">{{ item.equipajeBodegaIda ? moneda(COSTO_BODEGA) : moneda(0) }}</span>
+                  </div>
+                  <div v-if="esComboIdaVuelta" class="flex items-center justify-between text-sm">
+                    <span class="text-text-muted">Vuelta</span>
+                    <span class="font-semibold text-navy">{{
+                      item.equipajeBodegaRegreso ? moneda(COSTO_BODEGA) : moneda(0)
+                    }}</span>
+                  </div>
                 </div>
               </div>
 
